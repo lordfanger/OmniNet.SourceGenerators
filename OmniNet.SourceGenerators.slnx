@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/Solution Items/" Id="8ec462fd-d22e-90a8-e5ce-7e832ba40c5d">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Project Path="src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj" Id="042a0812-bc1d-1f41-f3dc-43eef2e0ec7f" />
+</Solution>
