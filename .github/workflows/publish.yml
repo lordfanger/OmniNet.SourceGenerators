@@ -21,50 +21,60 @@ jobs:
         run: |
           [xml]$proj = Get-Content "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
           $version = $proj.Project.PropertyGroup.Version
-          echo "Current version: $version"
-          echo "::set-output name=version::$version"
+          if (-not $version) { $version = "0.1.0" }
+          Write-Host "Current version: $version"
+          echo "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Find next available version
         id: next_version
         shell: pwsh
         run: |
           $packageId = 'omninet.sourcegenerators.core'
+          # Poznámka: URL musí být bez mezer a z důvodu case sensitivity používáme malá písmena
           $url = "https://api.nuget.org/v3-flatcontainer/$packageId/index.json"
           try {
             $json = Invoke-RestMethod -Uri $url -UseBasicParsing
-            $versions = $json.versions | Sort-Object
+            $versions = $json.versions
           } catch {
+            Write-Host "Package not found on NuGet.org, assuming first publish"
             $versions = @()
           }
+
           $current = '${{ steps.get_version.outputs.version }}'
           $parts = $current -split '\.'
           $major = [int]$parts[0]
           $minor = [int]$parts[1]
           $patch = [int]$parts[2]
+
           $next = $patch
           do {
             $candidate = "$major.$minor.$next"
             $exists = $versions -contains $candidate
             if ($exists) { $next++ }
           } while ($exists)
-          echo "Next version: $candidate"
-          echo "::set-output name=version::$candidate"
+
+          Write-Host "Next available version: $candidate"
+          echo "version=$candidate" >> $env:GITHUB_OUTPUT
 
       - name: Update csproj version
         shell: pwsh
         run: |
-          [xml]$proj = Get-Content "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
+          $csprojPath = "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
+          [xml]$proj = Get-Content $csprojPath
           $proj.Project.PropertyGroup.Version = '${{ steps.next_version.outputs.version }}'
-          $proj.Save("src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj")
+          $proj.Save($csprojPath)
 
-      - name: Restore
-        run: dotnet restore src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj
+      - name: Restore dependencies
+        run: dotnet restore "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
 
-      - name: Build
-        run: dotnet build src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj --configuration Release --no-restore
+      - name: Build project
+        run: dotnet build "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj" --configuration Release --no-restore
 
-      - name: Pack
-        run: dotnet pack src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj --configuration Release --no-build --output ./artifacts
+      - name: Create artifacts directory
+        run: mkdir artifacts
 
-      - name: Push to NuGet
-        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: Pack NuGet package
+        run: dotnet pack "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj" --configuration Release --no-build --output "artifacts"
+
+      - name: Push to NuGet.org
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
