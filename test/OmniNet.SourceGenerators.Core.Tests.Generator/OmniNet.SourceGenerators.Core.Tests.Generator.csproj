@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Template/**/*.cs" />
+    <Compile Remove="Template/**/*.cs" />
+    <Compile Include="Template/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\OmniNet.SourceGenerators.Core\OmniNet.SourceGenerators.Core.csproj" />
+  </ItemGroup>
+
+  <Target Name="EmbedProjectReferences" AfterTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <EmbeddedResource Include="@(_ResolvedProjectReferencePaths)"
+                         Visible="false">
+        <LogicalName>Dependencies\%(_ResolvedProjectReferencePaths.Filename).dll</LogicalName>
+      </EmbeddedResource>
+    </ItemGroup>
+  </Target>
+
+</Project>
