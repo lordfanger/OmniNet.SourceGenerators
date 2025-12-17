@@ -1,0 +1,70 @@
+﻿name: Build, Version & Publish NuGet
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-pack-publish:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Get current version from csproj
+        id: get_version
+        shell: pwsh
+        run: |
+          [xml]$proj = Get-Content "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
+          $version = $proj.Project.PropertyGroup.Version
+          echo "Current version: $version"
+          echo "::set-output name=version::$version"
+
+      - name: Find next available version
+        id: next_version
+        shell: pwsh
+        run: |
+          $packageId = 'omninet.sourcegenerators.core'
+          $url = "https://api.nuget.org/v3-flatcontainer/$packageId/index.json"
+          try {
+            $json = Invoke-RestMethod -Uri $url -UseBasicParsing
+            $versions = $json.versions | Sort-Object
+          } catch {
+            $versions = @()
+          }
+          $current = '${{ steps.get_version.outputs.version }}'
+          $parts = $current -split '\.'
+          $major = [int]$parts[0]
+          $minor = [int]$parts[1]
+          $patch = [int]$parts[2]
+          $next = $patch
+          do {
+            $candidate = "$major.$minor.$next"
+            $exists = $versions -contains $candidate
+            if ($exists) { $next++ }
+          } while ($exists)
+          echo "Next version: $candidate"
+          echo "::set-output name=version::$candidate"
+
+      - name: Update csproj version
+        shell: pwsh
+        run: |
+          [xml]$proj = Get-Content "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
+          $proj.Project.PropertyGroup.Version = '${{ steps.next_version.outputs.version }}'
+          $proj.Save("src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj")
+
+      - name: Restore
+        run: dotnet restore src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj
+
+      - name: Build
+        run: dotnet build src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj --configuration Release --no-restore
+
+      - name: Pack
+        run: dotnet pack src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj --configuration Release --no-build --output ./artifacts
+
+      - name: Push to NuGet
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

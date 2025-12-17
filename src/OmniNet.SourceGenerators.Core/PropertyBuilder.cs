@@ -1,4 +1,4 @@
-namespace OmniNet.SourceGenerators.Core;
+﻿namespace OmniNet.SourceGenerators.Core;
 
 /// <summary>
 /// Builder to generate type's property.
@@ -11,6 +11,7 @@ public ref partial struct PropertyBuilder
     private bool _isRequired;
     private bool _implicitGetter;
     private bool _implicitSetter;
+    private bool _initOnly;
     private bool _newModifier;
     private VirtualModifier _virtualModifier = VirtualModifier.None;
     private readonly StringBuilderWrapper _sbWrapper;
@@ -58,11 +59,13 @@ public ref partial struct PropertyBuilder
     /// Sets generated property setter accessor as implicit.
     /// </summary>
     /// <param name="value">Whether setter will be implicit.</param>
+    /// <param name="initOnly">Whether the setter is init-only.</param>
     /// <returns>Self builder.</returns>
     /// <remarks>At least one of accessors must be set.</remarks>
-    public PropertyBuilder WithImplicitSetter(bool value = true)
+    public PropertyBuilder WithImplicitSetter(bool value = true, bool initOnly = false)
     {
         _implicitSetter = value;
+        _initOnly = initOnly;
         return this;
     }
 
@@ -211,6 +214,8 @@ public ref partial struct PropertyBuilder
         // Property type and name.
         _sbWrapper.AppendWithNamespace(_propertyType).Append(' ').Append(_name);
 
+        var setterAccessor = _initOnly ? "init" : "set";
+
         // Implementation.
         switch (_implicitGetter, _implicitSetter)
         {
@@ -218,10 +223,10 @@ public ref partial struct PropertyBuilder
                 _sbWrapper.Append(" { get; }");
                 break;
             case (true, true):
-                _sbWrapper.Append(" { get; set; }");
+                _sbWrapper.Append(" { get; ").Append(setterAccessor).Append("; }");
                 break;
             case (false, true):
-                _sbWrapper.Append(" { set; }");
+                _sbWrapper.Append(" { ").Append(setterAccessor).Append("; }");
                 break;
             case (false, false):
                 // TODO emit diagnostics, not accessor specified

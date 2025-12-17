@@ -26,8 +26,7 @@
 
   <Target Name="EmbedProjectReferences" AfterTargets="ResolveProjectReferences">
     <ItemGroup>
-      <EmbeddedResource Include="@(_ResolvedProjectReferencePaths)"
-                         Visible="false">
+      <EmbeddedResource Include="@(_ResolvedProjectReferencePaths)" Visible="false">
         <LogicalName>Dependencies\%(_ResolvedProjectReferencePaths.Filename).dll</LogicalName>
       </EmbeddedResource>
     </ItemGroup>

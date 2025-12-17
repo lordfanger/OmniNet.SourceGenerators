@@ -1,0 +1,16 @@
+﻿<Project>
+  <ItemGroup>
+    <EmbeddedResource Include="Template/**/*.cs" />
+    <Compile Remove="Template/**/*.cs" />
+    <Compile Include="Template/**/*.cs" />
+  </ItemGroup>
+
+  <Target Name="EmbedProjectReferences" AfterTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <EmbeddedResource Include="@(_ResolvedProjectReferencePaths)"
+                         Visible="false">
+        <LogicalName>Dependencies\%(_ResolvedProjectReferencePaths.Filename).dll</LogicalName>
+      </EmbeddedResource>
+    </ItemGroup>
+  </Target>
+</Project>
