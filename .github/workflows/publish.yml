@@ -19,41 +19,66 @@ jobs:
         id: get_version
         shell: pwsh
         run: |
-          [xml]$proj = Get-Content "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
+          $csprojPath = "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
+          if (-not (Test-Path $csprojPath)) {
+            Write-Error "CSProj file not found at $csprojPath"
+            exit 1
+          }
+          [xml]$proj = Get-Content $csprojPath
           $version = $proj.Project.PropertyGroup.Version
-          if (-not $version) { $version = "0.1.0" }
+          if (-not $version) {
+            $version = "0.1.0"
+            Write-Host "No version found in csproj, using default: $version"
+          }
           Write-Host "Current version: $version"
           echo "version=$version" >> $env:GITHUB_OUTPUT
 
-      - name: Find next available version
+      - name: Find next available version on NuGet.org
         id: next_version
         shell: pwsh
         run: |
-          $packageId = 'omninet.sourcegenerators.core'
-          # Poznámka: URL musí být bez mezer a z důvodu case sensitivity používáme malá písmena
+          $packageId = 'OmniNet.SourceGenerators.Core'.ToLower()
           $url = "https://api.nuget.org/v3-flatcontainer/$packageId/index.json"
+          
+          Write-Host "Checking existing versions at: $url"
+          
           try {
-            $json = Invoke-RestMethod -Uri $url -UseBasicParsing
+            $response = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
+            $json = $response.Content | ConvertFrom-Json
             $versions = $json.versions
+            Write-Host "Found $($versions.Count) existing versions on NuGet.org"
           } catch {
-            Write-Host "Package not found on NuGet.org, assuming first publish"
-            $versions = @()
+            if ($_.Exception.Response.StatusCode -eq 404) {
+              Write-Host "Package not found on NuGet.org - this will be the first release"
+              $versions = @()
+            } else {
+              Write-Host "Error checking NuGet.org: $($_.Exception.Message)"
+              $versions = @()
+            }
           }
 
           $current = '${{ steps.get_version.outputs.version }}'
           $parts = $current -split '\.'
+          
+          if ($parts.Count -lt 3) {
+            Write-Error "Invalid version format: $current. Expected format: major.minor.patch"
+            exit 1
+          }
+          
           $major = [int]$parts[0]
           $minor = [int]$parts[1]
           $patch = [int]$parts[2]
 
           $next = $patch
-          do {
+          $candidate = "$major.$minor.$next"
+          
+          while ($versions -contains $candidate) {
+            $next++
             $candidate = "$major.$minor.$next"
-            $exists = $versions -contains $candidate
-            if ($exists) { $next++ }
-          } while ($exists)
+            Write-Host "Version $candidate exists on NuGet.org, trying next..."
+          }
 
-          Write-Host "Next available version: $candidate"
+          Write-Host "✅ Next available version: $candidate"
           echo "version=$candidate" >> $env:GITHUB_OUTPUT
 
       - name: Update csproj version
@@ -61,8 +86,23 @@ jobs:
         run: |
           $csprojPath = "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
           [xml]$proj = Get-Content $csprojPath
+          
+          # Ensure PropertyGroup exists
+          if (-not $proj.Project.PropertyGroup) {
+            $propertyGroup = $proj.CreateElement("PropertyGroup")
+            $proj.Project.AppendChild($propertyGroup) | Out-Null
+          }
+          
+          # Set or update version
+          if (-not $proj.Project.PropertyGroup.Version) {
+            $versionElement = $proj.CreateElement("Version")
+            $proj.Project.PropertyGroup.AppendChild($versionElement) | Out-Null
+          }
+          
           $proj.Project.PropertyGroup.Version = '${{ steps.next_version.outputs.version }}'
           $proj.Save($csprojPath)
+          
+          Write-Host "✅ Updated version to: $(${env:GITHUB_OUTPUT})"
 
       - name: Restore dependencies
         run: dotnet restore "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
@@ -70,11 +110,104 @@ jobs:
       - name: Build project
         run: dotnet build "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj" --configuration Release --no-restore
 
-      - name: Create artifacts directory
-        run: mkdir artifacts
+      - name: Create artifacts directory with absolute path
+        id: create_artifacts_dir
+        shell: pwsh
+        run: |
+          $artifactsDir = Join-Path $env:GITHUB_WORKSPACE "artifacts"
+          if (-not (Test-Path $artifactsDir)) {
+            New-Item -ItemType Directory -Path $artifactsDir | Out-Null
+          }
+          $absolutePath = (Resolve-Path $artifactsDir).Path
+          Write-Host "Artifacts directory created at: $absolutePath"
+          echo "path=$absolutePath" >> $env:GITHUB_OUTPUT
+          echo "relative_path=artifacts" >> $env:GITHUB_OUTPUT
 
-      - name: Pack NuGet package
-        run: dotnet pack "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj" --configuration Release --no-build --output "artifacts"
+      - name: Pack NuGet package with explicit path
+        id: pack_package
+        shell: pwsh
+        run: |
+          $artifactsDir = "${{ steps.create_artifacts_dir.outputs.path }}"
+          $csprojPath = "src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj"
+          
+          Write-Host "Packing to: $artifactsDir"
+          dotnet pack $csprojPath --configuration Release --no-build --output "$artifactsDir"
+          
+          # Verify package was created
+          $packagePath = Join-Path $artifactsDir "*.nupkg"
+          $packages = Get-ChildItem -Path $packagePath
+          
+          if ($packages.Count -eq 0) {
+            Write-Error "No .nupkg files found in $artifactsDir"
+            exit 1
+          }
+          
+          foreach ($package in $packages) {
+            Write-Host "✅ Package created: $($package.FullName)"
+            $packageSize = [math]::Round($package.Length / 1KB, 2)
+            Write-Host "📦 Package size: ${packageSize}KB"
+          }
+          
+          $firstPackage = $packages[0].FullName
+          echo "package_path=$firstPackage" >> $env:GITHUB_OUTPUT
+          echo "package_name=$(Split-Path $firstPackage -Leaf)" >> $env:GITHUB_OUTPUT
 
-      - name: Push to NuGet.org
-        run: dotnet nuget push "artifacts/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: Verify package exists before pushing
+        shell: pwsh
+        run: |
+          $packagePath = "${{ steps.pack_package.outputs.package_path }}"
+          if (-not (Test-Path $packagePath)) {
+            Write-Error "Package file not found at: $packagePath"
+            Write-Host "Listing contents of artifacts directory:"
+            Get-ChildItem -Path "${{ steps.create_artifacts_dir.outputs.path }}" -Recurse
+            exit 1
+          }
+          Write-Host "✅ Package verified at: $packagePath"
+
+      - name: Push to NuGet.org with robust path handling
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          if (-not $env:NUGET_API_KEY) {
+            Write-Error "NUGET_API_KEY secret is not set"
+            exit 1
+          }
+          
+          $packagePath = "${{ steps.pack_package.outputs.package_path }}"
+          $packageName = "${{ steps.pack_package.outputs.package_name }}"
+          
+          Write-Host "🚀 Pushing package: $packageName"
+          Write-Host "📍 Package path: $packagePath"
+          
+          try {
+            dotnet nuget push "$packagePath" `
+              --api-key "$env:NUGET_API_KEY" `
+              --source "https://api.nuget.org/v3/index.json" `
+              --skip-duplicate
+            
+            Write-Host "✅ Successfully published package: $packageName"
+            Write-Host "🔗 Package URL: https://www.nuget.org/packages/$($packageName.Split('.')[0..2] -join '.')"
+            
+          } catch {
+            Write-Error "Failed to push package: $($_.Exception.Message)"
+            
+            # Additional debugging information
+            Write-Host "🔍 Debugging information:"
+            Write-Host "Current directory: $(Get-Location)"
+            Write-Host "Artifacts directory contents:"
+            Get-ChildItem -Path "${{ steps.create_artifacts_dir.outputs.path }}" -Recurse
+            
+            exit 1
+          }
+
+      - name: Create GitHub Release (optional)
+        if: success()
+        shell: pwsh
+        run: |
+          $version = "${{ steps.next_version.outputs.version }}"
+          $packageName = "${{ steps.pack_package.outputs.package_name }}"
+          
+          Write-Host "🎉 Workflow completed successfully!"
+          Write-Host "🎯 Published version: $version"
+          Write-Host "📦 Package: $packageName"
