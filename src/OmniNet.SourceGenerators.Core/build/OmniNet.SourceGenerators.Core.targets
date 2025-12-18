@@ -15,14 +15,14 @@
   </Target>
 
   <Target Name="EmbedNuGetReferences" AfterTargets="ResolveReferences">
+    <ItemGroup>
+      <SourceGeneratorDependency Include="OmniNet.SourceGenerators.Core" />
+    </ItemGroup>
+
     <PropertyGroup>
       <!-- Create a list of identities from SourceGeneratorDependency -->
       <SourceGeneratorDependencyList>@(SourceGeneratorDependency->'%(Identity)', ';')</SourceGeneratorDependencyList>
     </PropertyGroup>
-
-    <ItemGroup>
-      <SourceGeneratorDependency Include="OmniNet.SourceGenerators.Core" />
-    </ItemGroup>
 
     <ItemGroup>
       <!-- Select NuGet dependencies -->
