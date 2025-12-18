@@ -1,4 +1,4 @@
-namespace OmniNet.SourceGenerators.Core;
+﻿namespace OmniNet.SourceGenerators.Core;
 
 /// <summary>
 /// Builder to generate type's members.
@@ -27,6 +27,29 @@ public ref struct TypeBuilder
     {
         SeparateMembers();
         return new PropertyBuilder(_sbWrapper, propertyType, name);
+    }
+
+    /// <summary>
+    /// Start building new method with void return type.
+    /// </summary>
+    /// <param name="name">Name of method to generate.</param>
+    /// <returns>Method builder to build new method.</returns>
+    public MethodBuilder BuildMethod(string name)
+    {
+        SeparateMembers();
+        return new MethodBuilder(_sbWrapper, name, returnType: null);
+    }
+
+    /// <summary>
+    /// Start building new method with specified return type.
+    /// </summary>
+    /// <param name="name">Name of method to generate.</param>
+    /// <param name="returnType">Return type of method to generate.</param>
+    /// <returns>Method builder to build new method.</returns>
+    public MethodBuilder BuildMethod(string name, ITypeSymbol returnType)
+    {
+        SeparateMembers();
+        return new MethodBuilder(_sbWrapper, name, returnType);
     }
 
     /// <summary>

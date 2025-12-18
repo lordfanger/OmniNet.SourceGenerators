@@ -79,20 +79,22 @@ file readonly struct InnerGenerator
         return new TestItemData(context.SemanticModel, classNode);
     }
 
-    private static void GenerateTestItems(SourceProductionContext context, ImmutableArray<TestItemData> omniStoreItems)
+    private static void GenerateTestItems(SourceProductionContext context, ImmutableArray<TestItemData> testItems)
     {
-        if (omniStoreItems.IsEmpty) return;
+        if (testItems.IsEmpty) return;
 
-        foreach (var (semanticModel, omniStoreItem) in omniStoreItems)
+        foreach (var (semanticModel, testItem) in testItems)
         {
             var compilation = semanticModel.Compilation;
             var stringType = compilation.GetSpecialType(SpecialType.System_String);
+            var intType = compilation.GetSpecialType(SpecialType.System_Int32);
+            var voidType = compilation.GetSpecialType(SpecialType.System_Void);
 
             var sb = new SourceBuilder();
             {
-                using var type = sb.AppendFileNamespace(omniStoreItem.ContainingNamespace)
-                    .BuildClass(omniStoreItem.Name)
-                    .WithAccessibility(omniStoreItem.DeclaredAccessibility)
+                using var type = sb.AppendFileNamespace(testItem.ContainingNamespace)
+                    .BuildClass(testItem.Name)
+                    .WithAccessibility(testItem.DeclaredAccessibility)
                     .WithPartial()
                     .Append()
                     .AppendOpenType();
@@ -109,9 +111,62 @@ file readonly struct InnerGenerator
                     .WithStatic()
                     .WithExplicitGetterExpression("\"StaticNameValue\"")
                     .Append();
+
+                // Test method: simple void method
+                type.BuildMethod("DoSomething")
+                    .WithAccessibility(Accessibility.Public)
+                    .OpenParameters()
+                    .OpenBody()
+                        .AppendLine("// Do something")
+                    .Dispose();
+
+                // Test method: method with return value
+                type.BuildMethod("GetName", stringType)
+                    .WithAccessibility(Accessibility.Public)
+                    .OpenParameters()
+                    .OpenBody()
+                        .AppendReturn("Id")
+                    .Dispose();
+
+                // Test method: method with parameters
+                type.BuildMethod("SetValue")
+                    .WithAccessibility(Accessibility.Public)
+                    .OpenParameters()
+                        .AddParameter(stringType, "key")
+                        .AddParameter(intType, "value", "0")
+                    .OpenBody()
+                        .AppendLine("// Set value logic")
+                    .Dispose();
+
+                // Test method: expression-bodied method
+                type.BuildMethod("ToString", stringType)
+                    .WithAccessibility(Accessibility.Public)
+                    .WithOverride()
+                    .OpenParameters()
+                    .AppendExpression("$\"TestItem: {Id}\"");
+
+                // Test method: static method
+                type.BuildMethod("CreateDefault", testItem)
+                    .WithAccessibility(Accessibility.Public)
+                    .WithStatic()
+                    .OpenParameters()
+                    .OpenBody()
+                        .AppendReturn($"new {testItem.Name} {{ Id = \"default\" }}")
+                    .Dispose();
+
+                // Test method: virtual method
+                type.BuildMethod("Calculate", intType)
+                    .WithAccessibility(Accessibility.Public)
+                    .WithVirtual()
+                    .OpenParameters()
+                        .AddParameter(intType, "x")
+                        .AddParameter(intType, "y")
+                    .OpenBody()
+                        .AppendReturn("x + y")
+                    .Dispose();
             }
 
-            sb.AddToContext(context, omniStoreItem);
+            sb.AddToContext(context, testItem);
         }
     }
 

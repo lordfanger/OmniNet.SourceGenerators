@@ -1,4 +1,4 @@
-namespace OmniNet.SourceGenerators.Core;
+﻿namespace OmniNet.SourceGenerators.Core;
 
 /// <summary>
 /// Builder to generate single generated file.
@@ -33,6 +33,27 @@ public readonly ref struct SourceBuilder
     /// <param name="name">Interface name.</param>
     /// <returns>Builder to build source code for interface.</returns>
     public OpeningTypeBuilder BuildInterface(string name) => new(_sbWrapper, name, GeneratedTypeKind.Interface);
+
+    /// <summary>
+    /// Start building source code for struct.
+    /// </summary>
+    /// <param name="name">Struct name.</param>
+    /// <returns>Builder to build source code for struct.</returns>
+    public OpeningTypeBuilder BuildStruct(string name) => new(_sbWrapper, name, GeneratedTypeKind.Struct);
+
+    /// <summary>
+    /// Start building source code for record.
+    /// </summary>
+    /// <param name="name">Record name.</param>
+    /// <returns>Builder to build source code for record.</returns>
+    public OpeningTypeBuilder BuildRecord(string name) => new(_sbWrapper, name, GeneratedTypeKind.Record);
+
+    /// <summary>
+    /// Start building source code for record struct.
+    /// </summary>
+    /// <param name="name">Record struct name.</param>
+    /// <returns>Builder to build source code for record struct.</returns>
+    public OpeningTypeBuilder BuildRecordStruct(string name) => new(_sbWrapper, name, GeneratedTypeKind.RecordStruct);
 
     /// <summary>
     /// Appends file-scoped namespace to source code.

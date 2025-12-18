@@ -1,4 +1,4 @@
-namespace OmniNet.SourceGenerators.Core;
+﻿namespace OmniNet.SourceGenerators.Core;
 
 /// <summary>
 /// Builder to generate type name with modifiers.
@@ -24,6 +24,8 @@ public ref struct OpeningTypeBuilder
             GeneratedTypeKind.Class => "class",
             GeneratedTypeKind.Interface => "interface",
             GeneratedTypeKind.Struct => "struct",
+            GeneratedTypeKind.Record => "record",
+            GeneratedTypeKind.RecordStruct => "record struct",
             _ => throw new ArgumentOutOfRangeException(nameof(typeKind), typeKind, null)
         };
     }

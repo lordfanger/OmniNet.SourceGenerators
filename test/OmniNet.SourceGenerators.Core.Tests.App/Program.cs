@@ -11,5 +11,8 @@ internal class Program
     {
         var obj = new MyGeneratedClass { Id = "test-id" };
         Console.WriteLine($"Id: {obj.Id}");
+
+        var x = MyGeneratedClass.CreateDefault();
+        Console.WriteLine($"Default Id: {x.Id}");
     }
 }

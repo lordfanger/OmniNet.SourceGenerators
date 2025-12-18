@@ -1,4 +1,4 @@
-namespace OmniNet.SourceGenerators.Core;
+﻿namespace OmniNet.SourceGenerators.Core;
 
 /// <summary>
 /// Kind of generated type.
@@ -6,20 +6,32 @@ namespace OmniNet.SourceGenerators.Core;
 public enum GeneratedTypeKind
 {
     /// <summary>
-    /// Reference object.
+    /// Reference object. <br />
     /// <code>class</code>
     /// </summary>
     Class,
 
     /// <summary>
-    /// Interface.
+    /// Interface. <br />
     /// <code>interface</code>
     /// </summary>
     Interface,
 
     /// <summary>
-    /// Value object.
+    /// Value object. <br />
     /// <code>struct</code>
     /// </summary>
-    Struct
+    Struct,
+
+    /// <summary>
+    /// Reference record. <br />
+    /// <code>record</code>
+    /// </summary>
+    Record,
+
+    /// <summary>
+    /// Record struct. <br />
+    /// <code>record struct</code>
+    /// </summary>
+    RecordStruct
 }
