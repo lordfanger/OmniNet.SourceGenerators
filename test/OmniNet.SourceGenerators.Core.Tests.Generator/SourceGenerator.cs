@@ -56,7 +56,7 @@ public class SourceGenerator : IIncrementalGenerator
     }
 }
 
-file struct InnerGenerator
+file readonly struct InnerGenerator
 {
     private static readonly IGeneratorAttribute _testsGenerateAttribute = SourceGeneratorProvider.GetAttribute<TestGenerateAttribute>();
 
@@ -102,6 +102,12 @@ file struct InnerGenerator
                     .WithRequired()
                     .WithImplicitGetter()
                     .WithImplicitSetter(initOnly: true)
+                    .Append();
+
+                type.BuildProperty(stringType, "StaticName")
+                    .WithAccessibility(Accessibility.Public)
+                    .WithStatic()
+                    .WithExplicitGetterExpression("\"StaticNameValue\"")
                     .Append();
             }
 

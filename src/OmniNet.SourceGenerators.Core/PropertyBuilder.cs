@@ -9,10 +9,12 @@ public ref partial struct PropertyBuilder
     private ImmutableArray<AttributeData>? _attributes;
     private Accessibility _accessibility;
     private bool _isRequired;
+    private bool _isStatic;
     private bool _implicitGetter;
     private bool _implicitSetter;
     private bool _initOnly;
     private bool _newModifier;
+    private string? _explicitGetterExpression;
     private VirtualModifier _virtualModifier = VirtualModifier.None;
     private readonly StringBuilderWrapper _sbWrapper;
     private readonly ITypeSymbol _propertyType;
@@ -70,6 +72,18 @@ public ref partial struct PropertyBuilder
     }
 
     /// <summary>
+    /// Sets generated property getter accessor as explicit with given expression.
+    /// </summary>
+    /// <param name="expression">Expression to use for getter.</param>
+    /// <returns>Self builder.</returns>
+    /// <remarks>If explicit getter is set, the implicit getter and setter must be unset.</remarks>
+    public PropertyBuilder WithExplicitGetterExpression(string? expression)
+    {
+        _explicitGetterExpression = expression;
+        return this;
+    }
+
+    /// <summary>
     /// Sets generated property accessibility.
     /// </summary>
     /// <param name="accessibility">Desired accessibility.</param>
@@ -88,6 +102,17 @@ public ref partial struct PropertyBuilder
     public PropertyBuilder WithRequired(bool value = true)
     {
         _isRequired = value;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the <c>static</c> modifier to property.
+    /// </summary>
+    /// <param name="value">Whether the <c>static</c> modifier will be set.</param>
+    /// <returns>Self builder.</returns>
+    public PropertyBuilder WithStatic(bool value = true)
+    {
+        _isStatic = value;
         return this;
     }
 
@@ -201,6 +226,11 @@ public ref partial struct PropertyBuilder
             _sbWrapper.Append(SyntaxFacts.GetText(_accessibility)).Append(' ');
         }
 
+        if (_isStatic)
+        {
+            _sbWrapper.Append("static ");
+        }
+
         if (_isRequired)
         {
             _sbWrapper.Append("required ");
@@ -217,18 +247,21 @@ public ref partial struct PropertyBuilder
         var setterAccessor = _initOnly ? "init" : "set";
 
         // Implementation.
-        switch (_implicitGetter, _implicitSetter)
+        switch (_implicitGetter, _implicitSetter, _explicitGetterExpression)
         {
-            case (true, false):
+            case (true, false, null):
                 _sbWrapper.Append(" { get; }");
                 break;
-            case (true, true):
+            case (true, true, null):
                 _sbWrapper.Append(" { get; ").Append(setterAccessor).Append("; }");
                 break;
-            case (false, true):
+            case (false, true, null):
                 _sbWrapper.Append(" { ").Append(setterAccessor).Append("; }");
                 break;
-            case (false, false):
+            case (false, false, { } getterExpression):
+                _sbWrapper.Append(" => ").Append(getterExpression).Append(';');
+                break;
+            case (_, _, _):
                 // TODO emit diagnostics, not accessor specified
                 break;
         }

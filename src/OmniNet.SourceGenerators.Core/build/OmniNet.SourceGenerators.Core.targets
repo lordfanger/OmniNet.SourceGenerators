@@ -13,4 +13,30 @@
       </EmbeddedResource>
     </ItemGroup>
   </Target>
+
+  <Target Name="EmbedNuGetReferences" AfterTargets="ResolveReferences">
+    <PropertyGroup>
+      <!-- Create a list of identities from SourceGeneratorDependency -->
+      <SourceGeneratorDependencyList>@(SourceGeneratorDependency->'%(Identity)', ';')</SourceGeneratorDependencyList>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <SourceGeneratorDependency Include="OmniNet.SourceGenerators.Core" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <!-- Select NuGet dependencies -->
+      <EmbedFromNuGet Include="@(ReferencePath)" Condition="'%(ReferencePath.NuGetPackageId)' != ''" />
+
+      <!-- Filter based on whether NuGetPackageId is contained in the list -->
+      <EmbedFilteredNuGet Include="@(EmbedFromNuGet)" Condition="$(SourceGeneratorDependencyList.Contains('%(EmbedFromNuGet.NuGetPackageId)'))" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Include="@(EmbedFilteredNuGet)" Visible="false">
+        <LogicalName>Dependencies\%(Filename).dll</LogicalName>
+      </EmbeddedResource>
+    </ItemGroup>
+  </Target>
+
 </Project>
