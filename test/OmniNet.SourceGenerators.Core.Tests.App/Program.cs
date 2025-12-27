@@ -14,5 +14,14 @@ internal class Program
 
         var x = MyGeneratedClass.CreateDefault();
         Console.WriteLine($"Default Id: {x.Id}");
+
+        // Test property initializers
+        var y = new MyGeneratedClass { Id = "initialized-test" };
+        Console.WriteLine($"DefaultCounter: {y.DefaultCounter}"); // Should be 10
+        Console.WriteLine($"DefaultName: {y.DefaultName}"); // Should be "DefaultValue"
+        
+        // Test modified values
+        y.DefaultCounter = 20;
+        Console.WriteLine($"Modified DefaultCounter: {y.DefaultCounter}"); // Should be 20
     }
 }

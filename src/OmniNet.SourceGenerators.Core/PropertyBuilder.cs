@@ -15,6 +15,7 @@ public ref partial struct PropertyBuilder
     private bool _initOnly;
     private bool _newModifier;
     private string? _explicitGetterExpression;
+    private string? _initializer;
     private VirtualModifier _virtualModifier = VirtualModifier.None;
     private readonly StringBuilderWrapper _sbWrapper;
     private readonly ITypeSymbol _propertyType;
@@ -148,6 +149,21 @@ public ref partial struct PropertyBuilder
     /// <returns>Self builder.</returns>
     public PropertyBuilder WithOverride(bool value = true) => WithVirtualModifier(VirtualModifier.Override, value);
 
+    /// <summary>
+    /// Sets the property initializer expression.
+    /// </summary>
+    /// <param name="expression">The initialization expression (e.g., "10", "\"default\"", "new List&lt;int&gt;()").</param>
+    /// <returns>Self builder.</returns>
+    /// <remarks>
+    /// The initializer is only valid for properties with implicit getter or expression-bodied getter.
+    /// It cannot be used with explicit getter expressions.
+    /// </remarks>
+    public PropertyBuilder WithInitializer(string? expression)
+    {
+        _initializer = expression;
+        return this;
+    }
+
     private PropertyBuilder WithVirtualModifier(VirtualModifier virtualModifier, bool value)
     {
         if (!value)
@@ -260,10 +276,21 @@ public ref partial struct PropertyBuilder
                 break;
             case (false, false, { } getterExpression):
                 _sbWrapper.Append(" => ").Append(getterExpression).Append(';');
+                // TODO emit diagnostics, explicit getter expression cannot have initializer
+                if (_initializer is not null)
+                {
+                    // Initializer will be ignored for expression-bodied properties
+                }
                 break;
             case (_, _, _):
-                // TODO emit diagnostics, not accessor specified
+                // TODO emit diagnostics, no accessor specified
                 break;
+        }
+
+        // Initializer.
+        if (_initializer is not null && _explicitGetterExpression is null)
+        {
+            _sbWrapper.Append(" = ").Append(_initializer).Append(';');
         }
 
         _sbWrapper.AppendLine();

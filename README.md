@@ -11,8 +11,11 @@ dotnet add package OmniNet.SourceGenerators.Core
 ## Features
 
 - **SourceBuilder** - Fluent API for generating C# source code files
-- **TypeBuilder** - Builder for generating type members (properties, etc.)
+- **TypeBuilder** - Builder for generating type members (properties, methods, etc.)
 - **PropertyBuilder** - Builder for generating properties with modifiers, accessors, and attributes
+- **MethodBuilder** - Builder for generating methods with modifiers, parameters, and bodies
+- **MethodParametersBuilder** - Builder for method parameters (including ref/out/in/params/defaults)
+- **MethodBodyBuilder** - Builder for method bodies (statements, return, throw, etc.)
 - **OpeningTypeBuilder** - Builder for generating type declarations with modifiers
 - **IncrementalSymbolValuesProvider** - Helper for creating incremental source generators
 - **SourceGeneratorProvider** - Provider for accessing generated attributes stored as assembly resources
@@ -55,7 +58,9 @@ public class MyGenerator : IIncrementalGenerator
     private static void GenerateSource(SourceProductionContext context, ITypeSymbol typeSymbol)
     {
         var sb = new SourceBuilder();
-        
+        var stringType = context.Compilation.GetSpecialType(SpecialType.System_String);
+        var intType = context.Compilation.GetSpecialType(SpecialType.System_Int32);
+
         using var type = sb
             .AppendFileNamespace(typeSymbol.ContainingNamespace)
             .BuildClass(typeSymbol.Name)
@@ -65,11 +70,34 @@ public class MyGenerator : IIncrementalGenerator
             .AppendOpenType();
 
         // Add properties using PropertyBuilder
-        type.BuildProperty(compilation.GetSpecialType(SpecialType.System_String), "GeneratedProperty")
+        type.BuildProperty(stringType, "GeneratedProperty")
             .WithAccessibility(Accessibility.Public)
             .WithImplicitGetter()
             .WithImplicitSetter()
             .Append();
+
+        // Add methods using MethodBuilder
+        type.BuildMethod("GetName", stringType)
+            .WithAccessibility(Accessibility.Public)
+            .OpenParameters()
+            .OpenBody()
+                .AppendReturn("GeneratedProperty")
+            .Dispose();
+
+        type.BuildMethod("SetValue")
+            .WithAccessibility(Accessibility.Public)
+            .OpenParameters()
+                .AddParameter(stringType, "key")
+                .AddParameter(intType, "value", "0")
+            .OpenBody()
+                .AppendLine("// Set value logic")
+            .Dispose();
+
+        type.BuildMethod("ToString", stringType)
+            .WithAccessibility(Accessibility.Public)
+            .WithOverride()
+            .OpenParameters()
+            .AppendExpression("$\"Generated: {GeneratedProperty}\"");
 
         sb.AddToContext(context, typeSymbol);
     }
@@ -121,6 +149,86 @@ type.BuildProperty(propertyType, "PropertyName")
     .WithImplicitGetter()
     .WithImplicitSetter()
     .Append();
+
+type.BuildMethod("MethodName") // void method
+    .WithAccessibility(Accessibility.Public)
+    .OpenParameters()
+    .OpenBody()
+        .AppendLine("// method body")
+    .Dispose();
+
+type.BuildMethod("MethodName", returnType) // method with return type
+    .WithAccessibility(Accessibility.Public)
+    .OpenParameters()
+    .OpenBody()
+        .AppendReturn("expression")
+    .Dispose();
+```
+
+### MethodBuilder
+
+Configures method generation with full control over modifiers, parameters, and body.
+
+```csharp
+type.BuildMethod("Name")
+    .WithAccessibility(Accessibility.Public)
+    .WithStatic()
+    .WithAsync()
+    .WithVirtual() // or .WithOverride(), .WithAbstract()
+    .WithNew()
+    .WithInheritDoc(baseType, "MethodName")
+    .WithAttributes(attributeDataArray)
+    .OpenParameters()
+        .AddParameter(typeSymbol, "param")
+        .AddRefParameter(typeSymbol, "refParam")
+        .AddOutParameter(typeSymbol, "outParam")
+        .AddParamsParameter(typeSymbol, "paramsArray")
+    .OpenBody()
+        .AppendLine("// method body")
+        .AppendReturn("value")
+    .Dispose();
+
+// Expression-bodied method
+ type.BuildMethod("ToString", stringType)
+    .WithAccessibility(Accessibility.Public)
+    .WithOverride()
+    .OpenParameters()
+    .AppendExpression("$\"Name: {Property}\"");
+
+// Abstract/interface method
+ type.BuildMethod("Calculate", intType)
+    .WithAccessibility(Accessibility.Public)
+    .WithAbstract()
+    .OpenParameters()
+        .AddParameter(intType, "x")
+    .AppendAbstract();
+```
+
+### MethodParametersBuilder
+
+Builder for method parameters.
+
+```csharp
+.OpenParameters()
+    .AddParameter(typeSymbol, "name")
+    .AddParameter(typeSymbol, "name", "defaultValue")
+    .AddRefParameter(typeSymbol, "refName")
+    .AddOutParameter(typeSymbol, "outName")
+    .AddInParameter(typeSymbol, "inName")
+    .AddParamsParameter(typeSymbol, "paramsName")
+    .AddParametersFrom(methodSymbol)
+```
+
+### MethodBodyBuilder
+
+Builder for method body.
+
+```csharp
+.OpenBody()
+    .AppendLine("// code")
+    .AppendReturn("expression")
+    .AppendThrow("new Exception()")
+    .Dispose();
 ```
 
 ### PropertyBuilder

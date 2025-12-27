@@ -112,6 +112,21 @@ file readonly struct InnerGenerator
                     .WithExplicitGetterExpression("\"StaticNameValue\"")
                     .Append();
 
+                // Test property with initializer: simple value type
+                type.BuildProperty(intType, "DefaultCounter")
+                    .WithAccessibility(Accessibility.Public)
+                    .WithImplicitGetter()
+                    .WithImplicitSetter()
+                    .WithInitializer("10")
+                    .Append();
+
+                // Test property with initializer: string
+                type.BuildProperty(stringType, "DefaultName")
+                    .WithAccessibility(Accessibility.Public)
+                    .WithImplicitGetter()
+                    .WithInitializer("\"DefaultValue\"")
+                    .Append();
+
                 // Test method: simple void method
                 type.BuildMethod("DoSomething")
                     .WithAccessibility(Accessibility.Public)
