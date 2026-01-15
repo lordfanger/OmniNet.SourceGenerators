@@ -1,4 +1,4 @@
-﻿# OmniNet.SourceGenerators.Core
+# OmniNet.SourceGenerators.Core
 
 A core library providing helpers and builders for creating C# source generators with ease.
 
@@ -58,8 +58,6 @@ public class MyGenerator : IIncrementalGenerator
     private static void GenerateSource(SourceProductionContext context, ITypeSymbol typeSymbol)
     {
         var sb = new SourceBuilder();
-        var stringType = context.Compilation.GetSpecialType(SpecialType.System_String);
-        var intType = context.Compilation.GetSpecialType(SpecialType.System_Int32);
 
         using var type = sb
             .AppendFileNamespace(typeSymbol.ContainingNamespace)
@@ -69,15 +67,15 @@ public class MyGenerator : IIncrementalGenerator
             .Append()
             .AppendOpenType();
 
-        // Add properties using PropertyBuilder
-        type.BuildProperty(stringType, "GeneratedProperty")
+        // Add properties using PropertyBuilder - with string type
+        type.BuildProperty("string", "GeneratedProperty")
             .WithAccessibility(Accessibility.Public)
             .WithImplicitGetter()
             .WithImplicitSetter()
             .Append();
 
-        // Add methods using MethodBuilder
-        type.BuildMethod("GetName", stringType)
+        // Add methods using MethodBuilder - with string return type
+        type.BuildMethod("GetName", "string")
             .WithAccessibility(Accessibility.Public)
             .OpenParameters()
             .OpenBody()
@@ -87,19 +85,19 @@ public class MyGenerator : IIncrementalGenerator
         type.BuildMethod("SetValue")
             .WithAccessibility(Accessibility.Public)
             .OpenParameters()
-                .AddParameter(stringType, "key")
-                .AddParameter(intType, "value", "0")
+                .AddParameter("string", "key")
+                .AddParameter("int", "value", "0")
             .OpenBody()
                 .AppendLine("// Set value logic")
             .Dispose();
 
-        type.BuildMethod("ToString", stringType)
+        type.BuildMethod("ToString", "string")
             .WithAccessibility(Accessibility.Public)
             .WithOverride()
             .OpenParameters()
             .AppendExpression("$\"Generated: {GeneratedProperty}\"");
 
-        sb.AddToContext(context, typeSymbol);
+        sb.AddToContext(context, TypeReference.FromSymbol(typeSymbol));
     }
 }
 ```
@@ -121,8 +119,30 @@ sb.BuildClass("MyClass");
 sb.BuildInterface("IMyInterface");
 
 // Add generated source to compilation
-sb.AddToContext(context, typeSymbol);
+sb.AddToContext(context, TypeReference.FromSymbol(typeSymbol));
 sb.AddToContext(context, namespaceSymbol, "FileName", "suffix");
+```
+
+### TypeReference
+
+Represents a type that can be specified in multiple ways:
+
+```csharp
+// Option 1: From ITypeSymbol (use factory method)
+var stringType = compilation.GetSpecialType(SpecialType.System_String);
+type.BuildProperty(TypeReference.FromSymbol(stringType), "Name");
+
+// Option 2: Plain string (implicit conversion - recommended for simplicity)
+type.BuildProperty("string", "Name");
+type.BuildProperty("int", "Count");
+
+// Option 3: Fully qualified string (implicit conversion)
+type.BuildProperty("global::System.Collections.Generic.List<int>", "Numbers");
+
+// Option 4: Namespace + type name tuple (implicit conversion)
+var myNamespace = compilation.GetCompilationNamespace("MyCompany.Domain");
+type.BuildProperty((myNamespace, "CustomEntity"), "Entity");
+type.BuildProperty((myNamespace, "Repository<T>"), "Repo");
 ```
 
 ### OpeningTypeBuilder
@@ -139,12 +159,21 @@ sb.BuildClass("MyClass")
 
 ### TypeBuilder
 
-Generates type members.
+Generates type members. All builder methods accept `TypeReference` for specifying types.
 
 ```csharp
 using var type = /* ... */.AppendOpenType();
 
-type.BuildProperty(propertyType, "PropertyName")
+// Using string type (implicit conversion)
+type.BuildProperty("string", "PropertyName")
+    .WithAccessibility(Accessibility.Public)
+    .WithImplicitGetter()
+    .WithImplicitSetter()
+    .Append();
+
+// Using ITypeSymbol
+var stringType = compilation.GetSpecialType(SpecialType.System_String);
+type.BuildProperty(TypeReference.FromSymbol(stringType), "PropertyName")
     .WithAccessibility(Accessibility.Public)
     .WithImplicitGetter()
     .WithImplicitSetter()
@@ -157,17 +186,17 @@ type.BuildMethod("MethodName") // void method
         .AppendLine("// method body")
     .Dispose();
 
-type.BuildMethod("MethodName", returnType) // method with return type
+type.BuildMethod("MethodName", "int") // method with return type
     .WithAccessibility(Accessibility.Public)
     .OpenParameters()
     .OpenBody()
-        .AppendReturn("expression")
+        .AppendReturn("42")
     .Dispose();
 ```
 
 ### MethodBuilder
 
-Configures method generation with full control over modifiers, parameters, and body.
+Configures method generation with full control over modifiers, parameters, and body. All type parameters accept `TypeReference`.
 
 ```csharp
 type.BuildMethod("Name")
@@ -176,47 +205,47 @@ type.BuildMethod("Name")
     .WithAsync()
     .WithVirtual() // or .WithOverride(), .WithAbstract()
     .WithNew()
-    .WithInheritDoc(baseType, "MethodName")
+    .WithInheritDoc(TypeReference.FromSymbol(baseType), "MethodName")
     .WithAttributes(attributeDataArray)
     .OpenParameters()
-        .AddParameter(typeSymbol, "param")
-        .AddRefParameter(typeSymbol, "refParam")
-        .AddOutParameter(typeSymbol, "outParam")
-        .AddParamsParameter(typeSymbol, "paramsArray")
+        .AddParameter("string", "param")
+        .AddRefParameter("int", "refParam")
+        .AddOutParameter("bool", "outParam")
+        .AddParamsParameter("object", "paramsArray")
     .OpenBody()
         .AppendLine("// method body")
         .AppendReturn("value")
     .Dispose();
 
 // Expression-bodied method
- type.BuildMethod("ToString", stringType)
+ type.BuildMethod("ToString", "string")
     .WithAccessibility(Accessibility.Public)
     .WithOverride()
     .OpenParameters()
     .AppendExpression("$\"Name: {Property}\"");
 
 // Abstract/interface method
- type.BuildMethod("Calculate", intType)
+ type.BuildMethod("Calculate", "int")
     .WithAccessibility(Accessibility.Public)
     .WithAbstract()
     .OpenParameters()
-        .AddParameter(intType, "x")
+        .AddParameter("int", "x")
     .AppendAbstract();
 ```
 
 ### MethodParametersBuilder
 
-Builder for method parameters.
+Builder for method parameters. All type parameters accept `TypeReference`.
 
 ```csharp
 .OpenParameters()
-    .AddParameter(typeSymbol, "name")
-    .AddParameter(typeSymbol, "name", "defaultValue")
-    .AddRefParameter(typeSymbol, "refName")
-    .AddOutParameter(typeSymbol, "outName")
-    .AddInParameter(typeSymbol, "inName")
-    .AddParamsParameter(typeSymbol, "paramsName")
-    .AddParametersFrom(methodSymbol)
+    .AddParameter("string", "name")
+    .AddParameter("int", "count", "0")  // with default value
+    .AddRefParameter("bool", "refName")
+    .AddOutParameter("decimal", "outName")
+    .AddInParameter("ReadOnlySpan<char>", "inName")
+    .AddParamsParameter("object", "paramsName")
+    .AddParametersFrom(methodSymbol)  // copy from existing method
 ```
 
 ### MethodBodyBuilder
@@ -233,18 +262,33 @@ Builder for method body.
 
 ### PropertyBuilder
 
-Configures property generation with full control over modifiers and accessors.
+Configures property generation with full control over modifiers and accessors. Property type accepts `TypeReference`.
 
 ```csharp
-type.BuildProperty(typeSymbol, "Name")
+// Using string type (implicit conversion - simplest)
+type.BuildProperty("string", "Name")
     .WithAccessibility(Accessibility.Public)
     .WithRequired()                              // required modifier
     .WithNew()                                   // new modifier
     .WithVirtual()                               // virtual modifiers (or WithOverride, WithAbstract)
     .WithImplicitGetter()                        // { get; }
     .WithImplicitSetter(initOnly: true)          // { init; }
-    .WithInheritDoc(baseType, "PropertyName")    // inheritdoc
+    .WithInheritDoc("BaseTypeName", "PropertyName")  // inheritdoc
     .WithAttributes(attributeDataArray)          // copy attributes
+    .Append();
+
+// Using ITypeSymbol
+var stringType = compilation.GetSpecialType(SpecialType.System_String);
+type.BuildProperty(TypeReference.FromSymbol(stringType), "Name")
+    .WithAccessibility(Accessibility.Public)
+    .WithImplicitGetter()
+    .WithImplicitSetter()
+    .Append();
+
+// Using namespace + type name
+type.BuildProperty((myNamespace, "CustomType"), "Custom")
+    .WithAccessibility(Accessibility.Public)
+    .WithImplicitGetter()
     .Append();
 ```
 

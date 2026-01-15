@@ -1,4 +1,4 @@
-namespace OmniNet.SourceGenerators.Core;
+﻿namespace OmniNet.SourceGenerators.Core;
 
 /// <summary>
 /// Builder to generate type's inheritance.
@@ -18,6 +18,21 @@ public ref struct TypeInheritanceBuilder
     /// <summary>
     /// Appends type symbols of extended interface or base class to source code.
     /// </summary>
+    /// <param name="typeRefs">Collection of type references of extended interface or base class.</param>
+    /// <returns>Self builder.</returns>
+    /// <remarks>If type reference is not first appended by any method or type itself is interface, it must be type reference of interface.</remarks>
+    public TypeInheritanceBuilder AppendInheritance(ImmutableArray<TypeReference> typeRefs)
+    {
+        foreach (var typeRef in typeRefs)
+        {
+            AppendInheritance(typeRef);
+        }
+        return this;
+    }
+
+    /// <summary>
+    /// Appends type symbols of extended interface or base class to source code.
+    /// </summary>
     /// <param name="interfaces">Collection of type symbols of extended interface or base class.</param>
     /// <returns>Self builder.</returns>
     /// <remarks>If type symbol is not first appended by any method or type itself is interface, it must be type symbol of interface.</remarks>
@@ -25,7 +40,7 @@ public ref struct TypeInheritanceBuilder
     {
         foreach (var interfaceSymbol in interfaces)
         {
-            AppendInheritance(interfaceSymbol);
+            AppendInheritance(TypeReference.FromSymbol(interfaceSymbol));
         }
         return this;
     }
@@ -37,15 +52,36 @@ public ref struct TypeInheritanceBuilder
     /// <param name="items">Collection of source items.</param>
     /// <param name="interfaceGetter"><inheritdoc cref="InterfaceGetter{T}" path="/summary"/></param>
     /// <returns>Self builder.</returns>
-    /// <remarks>If returned type symbol is not first appended by any method or type itself is interface, it must be type symbol of interface.</remarks>
+    /// <remarks>If returned type reference is not first appended by any method or type itself is interface, it must be type reference of interface.</remarks>
     public TypeInheritanceBuilder AppendInheritance<T>(ImmutableArray<T> items, InterfaceGetter<T> interfaceGetter)
+    {
+        foreach (var item in items)
+        {
+            var typeRef = interfaceGetter(item);
+            if (typeRef == null) continue;
+
+            AppendInheritance(typeRef.Value);
+        }
+
+        return this;
+    }
+
+    /// <summary>
+    /// Appends type symbols of extended interface or base class to source code returned from source items by function that.
+    /// </summary>
+    /// <typeparam name="T">Type of source item.</typeparam>
+    /// <param name="items">Collection of source items.</param>
+    /// <param name="interfaceGetter"><inheritdoc cref="InterfaceGetter{T}" path="/summary"/></param>
+    /// <returns>Self builder.</returns>
+    /// <remarks>If returned type symbol is not first appended by any method or type itself is interface, it must be type symbol of interface.</remarks>
+    public TypeInheritanceBuilder AppendInheritance<T>(ImmutableArray<T> items, InterfaceSymbolGetter<T> interfaceGetter)
     {
         foreach (var item in items)
         {
             var interfaceSymbol = interfaceGetter(item);
             if (interfaceSymbol == null) continue;
 
-            AppendInheritance(interfaceSymbol);
+            AppendInheritance(TypeReference.FromSymbol(interfaceSymbol));
         }
 
         return this;
@@ -74,17 +110,25 @@ public ref struct TypeInheritanceBuilder
     /// <summary>
     /// Appends extended interface or base class to source code.
     /// </summary>
-    /// <param name="typeSymbol">Type symbol of extended interface or base class.</param>
+    /// <param name="typeRef">Type reference of extended interface or base class.</param>
     /// <returns>Self builder.</returns>
-    /// <remarks>If type symbol is not first appended by any method or type itself is interface, it must be an interface.</remarks>
-    public TypeInheritanceBuilder AppendInheritance(ITypeSymbol typeSymbol)
+    /// <remarks>If type reference is not first appended by any method or type itself is interface, it must be an interface.</remarks>
+    public TypeInheritanceBuilder AppendInheritance(TypeReference typeRef)
     {
         WriteBeforeInheritance();
 
         // TODO emit diagnostic if type symbol must be an interface, but is not or is sealed/struct/static - not needed, but could help
-        _sbWrapper.AppendWithNamespace(typeSymbol);
+        _sbWrapper.AppendTypeReference(typeRef);
         return this;
     }
+
+    /// <summary>
+    /// Appends extended interface or base class to source code.
+    /// </summary>
+    /// <param name="typeSymbol">Type symbol of extended interface or base class.</param>
+    /// <returns>Self builder.</returns>
+    /// <remarks>If type symbol is not first appended by any method or type itself is interface, it must be an interface.</remarks>
+    public TypeInheritanceBuilder AppendInheritance(ITypeSymbol typeSymbol) => AppendInheritance(TypeReference.FromSymbol(typeSymbol));
 
     /// <summary>
     /// Appends type opening to source code.

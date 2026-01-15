@@ -73,6 +73,23 @@ public readonly ref struct SourceBuilder
     /// Adds source code for generated file to the compilation.
     /// </summary>
     /// <param name="context">Compilation context.</param>
+    /// <param name="typeRef">Type reference to generate hint name.</param>
+    /// <param name="suffix">Optional suffix to differentiate generated files.</param>
+    /// <remarks>
+    /// Hint name for generated file will be:
+    /// <code>$TYPE_NAMESPACE.$TYPE_NAME[.$SUFFIX].g.cs</code>
+    /// </remarks>
+    public void AddToContext(SourceProductionContext context, TypeReference typeRef, string? suffix = null)
+    {
+        var typeName = typeRef.GetTypeNameForFile(out var namespaceSymbol);
+        AddToContext(context, namespaceSymbol, typeName, suffix);
+    }
+
+
+    /// <summary>
+    /// Adds source code for generated file to the compilation.
+    /// </summary>
+    /// <param name="context">Compilation context.</param>
     /// <param name="typeSymbol">Type symbol to generate hint name.</param>
     /// <param name="suffix">Optional suffix to differentiate generated files.</param>
     /// <remarks>
@@ -81,20 +98,20 @@ public readonly ref struct SourceBuilder
     /// </remarks>
     public void AddToContext(SourceProductionContext context, ITypeSymbol typeSymbol, string? suffix = null) => AddToContext(context, typeSymbol.ContainingNamespace, typeSymbol.Name, suffix);
 
-    /// <summary><inheritdoc cref="AddToContext(SourceProductionContext,ITypeSymbol,string?)" path="/summary"/></summary>
-    /// <param name="context"><inheritdoc cref="AddToContext(SourceProductionContext,ITypeSymbol,string?)" path="/param[@name='context']"/></param>
+    /// <summary><inheritdoc cref="AddToContext(SourceProductionContext,TypeReference,string?)" path="/summary"/></summary>
+    /// <param name="context"><inheritdoc cref="AddToContext(SourceProductionContext,TypeReference,string?)" path="/param[@name='context']"/></param>
     /// <param name="namespaceSymbol">Namespace symbol to generate hint name.</param>
     /// <param name="name">Name for file.</param>
-    /// <param name="suffix"><inheritdoc cref="AddToContext(SourceProductionContext,ITypeSymbol,string?)" path="/param[@name='suffix']"/></param>
+    /// <param name="suffix"><inheritdoc cref="AddToContext(SourceProductionContext,TypeReference,string?)" path="/param[@name='suffix']"/></param>
     /// <remarks>
     /// Hint name for generated file will be:
     /// <code>$NAMESPACE.$NAME[.$SUFFIX].g.cs</code>
     /// </remarks>
-    public void AddToContext(SourceProductionContext context, INamespaceSymbol namespaceSymbol, string name, string? suffix = null)
+    public void AddToContext(SourceProductionContext context, INamespaceSymbol? namespaceSymbol, string name, string? suffix = null)
     {
         // TODO use shared pool and different wrapper (some generic string builder? source code builder is overkill)
         var filePathSbWrapper = new StringBuilderWrapper(new StringBuilder());
-        if (namespaceSymbol.IsNotGlobal())
+        if (namespaceSymbol is not null && namespaceSymbol.IsNotGlobal())
         {
             filePathSbWrapper.AppendNamespaceWithoutGlobal(namespaceSymbol).Append('.');
         }

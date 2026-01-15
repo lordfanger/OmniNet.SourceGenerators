@@ -5,7 +5,7 @@
 /// </summary>
 public ref partial struct MethodBuilder
 {
-    private (ITypeSymbol TypeSymbol, string MethodName)? _inheritDoc;
+    private (TypeReference TypeRef, string MethodName)? _inheritDoc;
     private ImmutableArray<AttributeData>? _attributes;
     private Accessibility _accessibility;
     private bool _isStatic;
@@ -15,7 +15,20 @@ public ref partial struct MethodBuilder
     private VirtualModifier _virtualModifier = VirtualModifier.None;
     private readonly StringBuilderWrapper _sbWrapper;
     private readonly string _name;
-    private readonly ITypeSymbol? _returnType; // null = void
+    private readonly TypeReference? _returnType; // null = void
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MethodBuilder"/> struct.
+    /// </summary>
+    /// <param name="sbWrapper">Wrapped string builder used as store.</param>
+    /// <param name="name">Method name.</param>
+    /// <param name="returnTypeReference">Return type of method. If null, method will be void.</param>
+    internal MethodBuilder(StringBuilderWrapper sbWrapper, string name, TypeReference returnTypeReference)
+    {
+        _sbWrapper = sbWrapper;
+        _name = name;
+        _returnType = returnTypeReference.IsVoid ? null : (TypeReference?)returnTypeReference;
+    }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="MethodBuilder"/> struct.
@@ -23,11 +36,20 @@ public ref partial struct MethodBuilder
     /// <param name="sbWrapper">Wrapped string builder used as store.</param>
     /// <param name="name">Method name.</param>
     /// <param name="returnType">Return type of method. If null, method will be void.</param>
-    internal MethodBuilder(StringBuilderWrapper sbWrapper, string name, ITypeSymbol? returnType)
+    internal MethodBuilder(StringBuilderWrapper sbWrapper, string name, ITypeSymbol? returnType) : this(sbWrapper, name, returnType != null ? TypeReference.FromSymbol(returnType) : default)
     {
-        _sbWrapper = sbWrapper;
-        _name = name;
-        _returnType = returnType;
+    }
+
+    /// <summary>
+    /// Sets generated method documentation inheritance from other method of type symbol.
+    /// </summary>
+    /// <param name="typeRef">Type reference whose method's documentation will be inherited.</param>
+    /// <param name="methodName">Name of the method whose documentation will be inherited.</param>
+    /// <returns>Self builder.</returns>
+    public MethodBuilder WithInheritDoc(TypeReference typeRef, string methodName)
+    {
+        _inheritDoc = (typeRef, methodName);
+        return this;
     }
 
     /// <summary>
@@ -36,11 +58,7 @@ public ref partial struct MethodBuilder
     /// <param name="typeSymbol">Type whose method's documentation will be inherited.</param>
     /// <param name="methodName">Name of the method whose documentation will be inherited.</param>
     /// <returns>Self builder.</returns>
-    public MethodBuilder WithInheritDoc(ITypeSymbol typeSymbol, string methodName)
-    {
-        _inheritDoc = (typeSymbol, methodName);
-        return this;
-    }
+    public MethodBuilder WithInheritDoc(ITypeSymbol typeSymbol, string methodName) => WithInheritDoc(TypeReference.FromSymbol(typeSymbol), methodName);
 
     /// <summary>
     /// Sets generated method accessibility.
@@ -166,7 +184,7 @@ public ref partial struct MethodBuilder
         // Documentation.
         if (_inheritDoc is { } inheritDoc)
         {
-            _sbWrapper.Append("/// <inheritdoc ").AppendDocSymbolReference(inheritDoc.TypeSymbol, inheritDoc.MethodName).AppendLine("/>");
+            _sbWrapper.Append("/// <inheritdoc ").AppendDocSymbolReference(inheritDoc.TypeRef, inheritDoc.MethodName).AppendLine("/>");
         }
 
         // Defined attributes.
@@ -240,9 +258,9 @@ public ref partial struct MethodBuilder
         }
 
         // Return type and method name.
-        if (_returnType != null)
+        if (_returnType is { } returnType)
         {
-            _sbWrapper.AppendWithNamespace(_returnType).Append(' ');
+            _sbWrapper.AppendTypeReference(returnType).Append(' ');
         }
         else
         {

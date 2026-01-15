@@ -23,11 +23,19 @@ public ref struct TypeBuilder
     /// <param name="propertyType">Type of property to generate.</param>
     /// <param name="name">Name of property to generate.</param>
     /// <returns>Property builder to build new property.</returns>
-    public PropertyBuilder BuildProperty(ITypeSymbol propertyType, string name)
+    public PropertyBuilder BuildProperty(TypeReference propertyType, string name)
     {
         SeparateMembers();
         return new PropertyBuilder(_sbWrapper, propertyType, name);
     }
+
+    /// <summary>
+    /// Start building new property.
+    /// </summary>
+    /// <param name="propertyType">Type of property to generate.</param>
+    /// <param name="name">Name of property to generate.</param>
+    /// <returns>Property builder to build new property.</returns>
+    public PropertyBuilder BuildProperty(ITypeSymbol propertyType, string name) => BuildProperty(TypeReference.FromSymbol(propertyType), name);
 
     /// <summary>
     /// Start building new method with void return type.
@@ -46,11 +54,19 @@ public ref struct TypeBuilder
     /// <param name="name">Name of method to generate.</param>
     /// <param name="returnType">Return type of method to generate.</param>
     /// <returns>Method builder to build new method.</returns>
-    public MethodBuilder BuildMethod(string name, ITypeSymbol returnType)
+    public MethodBuilder BuildMethod(string name, TypeReference returnType)
     {
         SeparateMembers();
         return new MethodBuilder(_sbWrapper, name, returnType);
     }
+
+    /// <summary>
+    /// Start building new method with specified return type.
+    /// </summary>
+    /// <param name="name">Name of method to generate.</param>
+    /// <param name="returnType">Return type of method to generate.</param>
+    /// <returns>Method builder to build new method.</returns>
+    public MethodBuilder BuildMethod(string name, ITypeSymbol returnType) => BuildMethod(name, TypeReference.FromSymbol(returnType));
 
     /// <summary>
     /// Separate members with new line if any was written.

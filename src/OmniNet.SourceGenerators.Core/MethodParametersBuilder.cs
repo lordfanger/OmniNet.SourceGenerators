@@ -26,10 +26,32 @@ public ref struct MethodParametersBuilder
     /// <param name="type">Type of parameter.</param>
     /// <param name="name">Name of parameter.</param>
     /// <returns>Self builder.</returns>
-    public MethodParametersBuilder AddParameter(ITypeSymbol type, string name)
+    public MethodParametersBuilder AddParameter(TypeReference type, string name)
     {
         AppendParameterSeparator();
-        _sbWrapper.AppendWithNamespace(type).Append(' ').Append(name);
+        _sbWrapper.AppendTypeReference(type).Append(' ').Append(name);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a parameter to the method.
+    /// </summary>
+    /// <param name="type">Type of parameter.</param>
+    /// <param name="name">Name of parameter.</param>
+    /// <returns>Self builder.</returns>
+    public MethodParametersBuilder AddParameter(ITypeSymbol type, string name) => AddParameter(TypeReference.FromSymbol(type), name);
+
+    /// <summary>
+    /// Adds a parameter with default value to the method.
+    /// </summary>
+    /// <param name="type">Type of parameter.</param>
+    /// <param name="name">Name of parameter.</param>
+    /// <param name="defaultValue">Default value expression.</param>
+    /// <returns>Self builder.</returns>
+    public MethodParametersBuilder AddParameter(TypeReference type, string name, string defaultValue)
+    {
+        AppendParameterSeparator();
+        _sbWrapper.AppendTypeReference(type).Append(' ').Append(name).Append(" = ").Append(defaultValue);
         return this;
     }
 
@@ -40,10 +62,18 @@ public ref struct MethodParametersBuilder
     /// <param name="name">Name of parameter.</param>
     /// <param name="defaultValue">Default value expression.</param>
     /// <returns>Self builder.</returns>
-    public MethodParametersBuilder AddParameter(ITypeSymbol type, string name, string defaultValue)
+    public MethodParametersBuilder AddParameter(ITypeSymbol type, string name, string defaultValue) => AddParameter(TypeReference.FromSymbol(type), name, defaultValue);
+
+    /// <summary>
+    /// Adds a ref parameter to the method.
+    /// </summary>
+    /// <param name="type">Type of parameter.</param>
+    /// <param name="name">Name of parameter.</param>
+    /// <returns>Self builder.</returns>
+    public MethodParametersBuilder AddRefParameter(TypeReference type, string name)
     {
         AppendParameterSeparator();
-        _sbWrapper.AppendWithNamespace(type).Append(' ').Append(name).Append(" = ").Append(defaultValue);
+        _sbWrapper.Append("ref ").AppendTypeReference(type).Append(' ').Append(name);
         return this;
     }
 
@@ -53,10 +83,18 @@ public ref struct MethodParametersBuilder
     /// <param name="type">Type of parameter.</param>
     /// <param name="name">Name of parameter.</param>
     /// <returns>Self builder.</returns>
-    public MethodParametersBuilder AddRefParameter(ITypeSymbol type, string name)
+    public MethodParametersBuilder AddRefParameter(ITypeSymbol type, string name) => AddRefParameter(TypeReference.FromSymbol(type), name);
+
+    /// <summary>
+    /// Adds an out parameter to the method.
+    /// </summary>
+    /// <param name="type">Type of parameter.</param>
+    /// <param name="name">Name of parameter.</param>
+    /// <returns>Self builder.</returns>
+    public MethodParametersBuilder AddOutParameter(TypeReference type, string name)
     {
         AppendParameterSeparator();
-        _sbWrapper.Append("ref ").AppendWithNamespace(type).Append(' ').Append(name);
+        _sbWrapper.Append("out ").AppendTypeReference(type).Append(' ').Append(name);
         return this;
     }
 
@@ -66,10 +104,18 @@ public ref struct MethodParametersBuilder
     /// <param name="type">Type of parameter.</param>
     /// <param name="name">Name of parameter.</param>
     /// <returns>Self builder.</returns>
-    public MethodParametersBuilder AddOutParameter(ITypeSymbol type, string name)
+    public MethodParametersBuilder AddOutParameter(ITypeSymbol type, string name) => AddOutParameter(TypeReference.FromSymbol(type), name);
+
+    /// <summary>
+    /// Adds an in parameter to the method.
+    /// </summary>
+    /// <param name="type">Type of parameter.</param>
+    /// <param name="name">Name of parameter.</param>
+    /// <returns>Self builder.</returns>
+    public MethodParametersBuilder AddInParameter(TypeReference type, string name)
     {
         AppendParameterSeparator();
-        _sbWrapper.Append("out ").AppendWithNamespace(type).Append(' ').Append(name);
+        _sbWrapper.Append("in ").AppendTypeReference(type).Append(' ').Append(name);
         return this;
     }
 
@@ -79,10 +125,18 @@ public ref struct MethodParametersBuilder
     /// <param name="type">Type of parameter.</param>
     /// <param name="name">Name of parameter.</param>
     /// <returns>Self builder.</returns>
-    public MethodParametersBuilder AddInParameter(ITypeSymbol type, string name)
+    public MethodParametersBuilder AddInParameter(ITypeSymbol type, string name) => AddInParameter(TypeReference.FromSymbol(type), name);
+
+    /// <summary>
+    /// Adds a params parameter to the method.
+    /// </summary>
+    /// <param name="elementType">Element type of params array.</param>
+    /// <param name="name">Name of parameter.</param>
+    /// <returns>Self builder.</returns>
+    public MethodParametersBuilder AddParamsParameter(TypeReference elementType, string name)
     {
         AppendParameterSeparator();
-        _sbWrapper.Append("in ").AppendWithNamespace(type).Append(' ').Append(name);
+        _sbWrapper.Append("params ").AppendTypeReference(elementType).Append("[] ").Append(name);
         return this;
     }
 
@@ -92,12 +146,7 @@ public ref struct MethodParametersBuilder
     /// <param name="elementType">Element type of params array.</param>
     /// <param name="name">Name of parameter.</param>
     /// <returns>Self builder.</returns>
-    public MethodParametersBuilder AddParamsParameter(ITypeSymbol elementType, string name)
-    {
-        AppendParameterSeparator();
-        _sbWrapper.Append("params ").AppendWithNamespace(elementType).Append("[] ").Append(name);
-        return this;
-    }
+    public MethodParametersBuilder AddParamsParameter(ITypeSymbol elementType, string name) => AddParamsParameter(TypeReference.FromSymbol(elementType), name);
 
     /// <summary>
     /// Adds parameters from existing method symbol.
@@ -155,7 +204,7 @@ public ref struct MethodParametersBuilder
     /// Opens body builder for method with body.
     /// </summary>
     /// <returns>Body builder.</returns>
-    public MethodBodyBuilder OpenBody()
+    public readonly MethodBodyBuilder OpenBody()
     {
         _sbWrapper.AppendLine(")");
         return new MethodBodyBuilder(_sbWrapper);
@@ -164,7 +213,7 @@ public ref struct MethodParametersBuilder
     /// <summary>
     /// Appends abstract/interface method declaration (no body).
     /// </summary>
-    public void AppendAbstract()
+    public readonly void AppendAbstract()
     {
         _sbWrapper.AppendLine(");");
     }
@@ -173,7 +222,7 @@ public ref struct MethodParametersBuilder
     /// Appends expression-bodied method.
     /// </summary>
     /// <param name="expression">Expression for method body.</param>
-    public void AppendExpression(string expression)
+    public readonly void AppendExpression(string expression)
     {
         _sbWrapper.Append(") => ").Append(expression).AppendLine(";");
     }

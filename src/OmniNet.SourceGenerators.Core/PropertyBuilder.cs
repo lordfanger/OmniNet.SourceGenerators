@@ -5,7 +5,7 @@
 /// </summary>
 public ref partial struct PropertyBuilder
 {
-    private (ITypeSymbol ClassSymbol, string PropertyName)? _inheritDoc;
+    private (TypeReference TypeRef, string PropertyName)? _inheritDoc;
     private ImmutableArray<AttributeData>? _attributes;
     private Accessibility _accessibility;
     private bool _isRequired;
@@ -18,7 +18,7 @@ public ref partial struct PropertyBuilder
     private string? _initializer;
     private VirtualModifier _virtualModifier = VirtualModifier.None;
     private readonly StringBuilderWrapper _sbWrapper;
-    private readonly ITypeSymbol _propertyType;
+    private readonly TypeReference _propertyType;
     private readonly string _name;
 
     /// <summary>
@@ -27,11 +27,33 @@ public ref partial struct PropertyBuilder
     /// <param name="sbWrapper">Wrapped string builder used as store.</param>
     /// <param name="propertyType">Type of property.</param>
     /// <param name="name">Property name.</param>
-    internal PropertyBuilder(StringBuilderWrapper sbWrapper, ITypeSymbol propertyType, string name)
+    internal PropertyBuilder(StringBuilderWrapper sbWrapper, TypeReference propertyType, string name)
     {
         _sbWrapper = sbWrapper;
         _propertyType = propertyType;
         _name = name;
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PropertyBuilder"/> struct.
+    /// </summary>
+    /// <param name="sbWrapper">Wrapped string builder used as store.</param>
+    /// <param name="propertyType">Type of property.</param>
+    /// <param name="name">Property name.</param>
+    internal PropertyBuilder(StringBuilderWrapper sbWrapper, ITypeSymbol propertyType, string name) : this(sbWrapper, TypeReference.FromSymbol(propertyType), name)
+    {
+    }
+
+    /// <summary>
+    /// Sets generated property documentation inheritance from other property of type symbol.
+    /// </summary>
+    /// <param name="typeRef">Type reference whose property's documentation will be inherited.</param>
+    /// <param name="propertyName">Name of the property whose documentation will be inherited.</param>
+    /// <returns>Self builder.</returns>
+    public PropertyBuilder WithInheritDoc(TypeReference typeRef, string propertyName)
+    {
+        _inheritDoc = (typeRef, propertyName);
+        return this;
     }
 
     /// <summary>
@@ -40,11 +62,7 @@ public ref partial struct PropertyBuilder
     /// <param name="typeSymbol">Type whose property's documentation will be inherited.</param>
     /// <param name="propertyName">Name of the property whose documentation will be inherited.</param>
     /// <returns>Self builder.</returns>
-    public PropertyBuilder WithInheritDoc(ITypeSymbol typeSymbol, string propertyName)
-    {
-        _inheritDoc = (typeSymbol, propertyName);
-        return this;
-    }
+    public PropertyBuilder WithInheritDoc(ITypeSymbol typeSymbol, string propertyName) => WithInheritDoc(TypeReference.FromSymbol(typeSymbol), propertyName);
 
     /// <summary>
     /// Sets generated property getter accessor as implicit.
@@ -202,7 +220,7 @@ public ref partial struct PropertyBuilder
         // Documentation.
         if (_inheritDoc is { } inheritDoc)
         {
-            _sbWrapper.Append("/// <inheritdoc ").AppendDocSymbolReference(inheritDoc.ClassSymbol, inheritDoc.PropertyName).AppendLine("/>");
+            _sbWrapper.Append("/// <inheritdoc ").AppendDocSymbolReference(inheritDoc.TypeRef, inheritDoc.PropertyName).AppendLine("/>");
         }
 
         // Defined attributes.
@@ -258,7 +276,7 @@ public ref partial struct PropertyBuilder
         }
 
         // Property type and name.
-        _sbWrapper.AppendWithNamespace(_propertyType).Append(' ').Append(_name);
+        _sbWrapper.AppendTypeReference(_propertyType).Append(' ').Append(_name);
 
         var setterAccessor = _initOnly ? "init" : "set";
 

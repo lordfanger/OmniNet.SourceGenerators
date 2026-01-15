@@ -1,4 +1,4 @@
-namespace OmniNet.SourceGenerators.Core;
+﻿namespace OmniNet.SourceGenerators.Core;
 
 /// <summary>
 /// Wrapped string builder for source code generation.
@@ -120,10 +120,23 @@ internal class StringBuilderWrapper(StringBuilder sb)
     /// <summary>
     /// Appends full type identifier including namespace with <c>global::</c> prefix and property name to the source code using syntax for documentation.
     /// </summary>
-    /// <param name="typeSymbol">Type which property to append as documentation reference.</param>
+    /// <param name="typeRef">Type reference which property to append as documentation reference.</param>
     /// <param name="propertyName">Name of the property.</param>
     /// <returns>Self wrapper.</returns>
-    public StringBuilderWrapper AppendDocSymbolReference(ITypeSymbol typeSymbol, string propertyName) => Append("cref=\"").AppendWithNamespace(typeSymbol, forDoc: true).Append('.').Append(propertyName).Append("\"");
+    public StringBuilderWrapper AppendDocSymbolReference(TypeReference typeRef, string propertyName) => Append("cref=\"").AppendTypeReference(typeRef, forDoc: true).Append('.').Append(propertyName).Append("\"");
+
+    /// <summary>
+    /// Appends type reference to the source code.
+    /// </summary>
+    /// <param name="typeRef">Type reference to append.</param>
+    /// <param name="allowSpecialCase">If allowed to use C# keyword as type identifier.<para>Defaults to <see langword="true"/>.</para></param>
+    /// <param name="forDoc">Whether to use documentation syntax.<para>Defaults to <see langword="false"/>.</para></param>
+    /// <returns>Self wrapper.</returns>
+    public StringBuilderWrapper AppendTypeReference(TypeReference typeRef, bool allowSpecialCase = true, bool forDoc = false)
+    {
+        typeRef.AppendTo(this, allowSpecialCase, forDoc);
+        return this;
+    }
 
     /// <summary>
     /// Appends full type identifier including namespace with <c>global::</c> prefix into source code or documentation.
