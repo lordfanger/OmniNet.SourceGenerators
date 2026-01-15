@@ -231,6 +231,17 @@ type.BuildMethod("Name")
     .OpenParameters()
         .AddParameter("int", "x")
     .AppendAbstract();
+
+// Explicit interface implementation
+type.BuildMethod("ToString", "string")
+    .WithExplicitInterfaceImplementation("System.IFormattable")
+    .OpenParameters()
+        .AddParameter("string", "format")
+        .AddParameter("System.IFormatProvider", "formatProvider")
+    .OpenBody()
+        .AppendReturn("\"formatted string\"")
+    .Dispose();
+// Generates: string System.IFormattable.ToString(string format, System.IFormatProvider formatProvider) { ... }
 ```
 
 ### MethodParametersBuilder

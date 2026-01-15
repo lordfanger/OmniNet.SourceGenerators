@@ -13,6 +13,7 @@ public ref partial struct MethodBuilder
     private bool _isPartial;
     private bool _newModifier;
     private VirtualModifier _virtualModifier = VirtualModifier.None;
+    private TypeReference? _explicitInterfaceImplementation;
     private readonly StringBuilderWrapper _sbWrapper;
     private readonly string _name;
     private readonly TypeReference? _returnType; // null = void
@@ -136,6 +137,33 @@ public ref partial struct MethodBuilder
     /// <returns>Self builder.</returns>
     public MethodBuilder WithOverride(bool value = true) => WithVirtualModifier(VirtualModifier.Override, value);
 
+    /// <summary>
+    /// Sets the method as an explicit interface implementation.
+    /// </summary>
+    /// <param name="interfaceType">Type reference of the interface being explicitly implemented.</param>
+    /// <returns>Self builder.</returns>
+    /// <remarks>
+    /// When using explicit interface implementation, the method cannot have accessibility modifiers,
+    /// static, virtual, abstract, or override modifiers. The signature is: InterfaceName.MethodName(...).
+    /// </remarks>
+    public MethodBuilder WithExplicitInterfaceImplementation(TypeReference interfaceType)
+    {
+        _explicitInterfaceImplementation = interfaceType;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the method as an explicit interface implementation.
+    /// </summary>
+    /// <param name="interfaceSymbol">Type symbol of the interface being explicitly implemented.</param>
+    /// <returns>Self builder.</returns>
+    /// <remarks>
+    /// When using explicit interface implementation, the method cannot have accessibility modifiers,
+    /// static, virtual, abstract, or override modifiers. The signature is: InterfaceName.MethodName(...).
+    /// </remarks>
+    public MethodBuilder WithExplicitInterfaceImplementation(ITypeSymbol interfaceSymbol) 
+        => WithExplicitInterfaceImplementation(TypeReference.FromSymbol(interfaceSymbol));
+
     private MethodBuilder WithVirtualModifier(VirtualModifier virtualModifier, bool value)
     {
         if (!value)
@@ -219,37 +247,42 @@ public ref partial struct MethodBuilder
         }
 
         // Modifiers.
-        if (_accessibility != Accessibility.NotApplicable)
+        // Note: Explicit interface implementation cannot have accessibility or most modifiers
+        // TODO: emit error (diagnostics) if they are set alongside explicit interface implementation
+        if (_explicitInterfaceImplementation is null)
         {
-            _sbWrapper.Append(SyntaxFacts.GetText(_accessibility)).Append(' ');
-        }
+            if (_accessibility != Accessibility.NotApplicable)
+            {
+                _sbWrapper.Append(SyntaxFacts.GetText(_accessibility)).Append(' ');
+            }
 
-        if (_isStatic)
-        {
-            _sbWrapper.Append("static ");
-        }
+            if (_isStatic)
+            {
+                _sbWrapper.Append("static ");
+            }
 
-        if (_newModifier)
-        {
-            _sbWrapper.Append("new ");
-        }
+            if (_newModifier)
+            {
+                _sbWrapper.Append("new ");
+            }
 
-        switch (_virtualModifier)
-        {
-            case VirtualModifier.Virtual:
-                _sbWrapper.Append("virtual ");
-                break;
-            case VirtualModifier.Abstract:
-                _sbWrapper.Append("abstract ");
-                break;
-            case VirtualModifier.Override:
-                _sbWrapper.Append("override ");
-                break;
-        }
+            switch (_virtualModifier)
+            {
+                case VirtualModifier.Virtual:
+                    _sbWrapper.Append("virtual ");
+                    break;
+                case VirtualModifier.Abstract:
+                    _sbWrapper.Append("abstract ");
+                    break;
+                case VirtualModifier.Override:
+                    _sbWrapper.Append("override ");
+                    break;
+            }
 
-        if (_isPartial)
-        {
-            _sbWrapper.Append("partial ");
+            if (_isPartial)
+            {
+                _sbWrapper.Append("partial ");
+            }
         }
 
         if (_isAsync)
@@ -265,6 +298,12 @@ public ref partial struct MethodBuilder
         else
         {
             _sbWrapper.Append("void ");
+        }
+
+        // Explicit interface implementation prefix
+        if (_explicitInterfaceImplementation is { } explicitInterface)
+        {
+            _sbWrapper.AppendTypeReference(explicitInterface).Append('.');
         }
 
         _sbWrapper.Append(_name).Append('(');

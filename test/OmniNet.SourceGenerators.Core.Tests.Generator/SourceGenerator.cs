@@ -99,6 +99,21 @@ file readonly struct InnerGenerator
                     .Append()
                     .AppendOpenType();
 
+                // Add interface to implement explicitly
+                var valueProviderInterface = compilation.GetTypeByMetadataName("System.IFormattable");
+                if (valueProviderInterface != null)
+                {
+                    // Add explicit interface implementation method
+                    type.BuildMethod("ToString", stringType)
+                        .WithExplicitInterfaceImplementation(valueProviderInterface)
+                        .OpenParameters()
+                            .AddParameter(stringType, "format", "null")
+                            .AddParameter(compilation.GetTypeByMetadataName("System.IFormatProvider")!, "formatProvider", "null")
+                        .OpenBody()
+                            .AppendReturn("Id")
+                        .Dispose();
+                }
+
                 type.BuildProperty(stringType, "Id")
                     .WithAccessibility(Accessibility.Public)
                     .WithRequired()
