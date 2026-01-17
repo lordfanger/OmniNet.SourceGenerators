@@ -2,8 +2,24 @@
 
 namespace OmniNet.SourceGenerators.Core.Tests.App;
 
+// Custom interface to test explicit interface implementation
+public interface IMyInterface
+{
+    string Name { get; set; }
+    int GetValue();
+}
+
+// Generic interface with static members (C# 11+)
+public interface IMyGenericInterface<T> where T : IMyGenericInterface<T>
+{
+    static abstract string StaticProperty { get; }
+    static abstract T Create();
+}
+
 [TestGenerate]
-public partial class MyGeneratedClass { }
+public partial class MyGeneratedClass : IMyInterface, IMyGenericInterface<MyGeneratedClass>
+{
+}
 
 internal class Program
 {
@@ -25,3 +41,4 @@ internal class Program
         Console.WriteLine($"Modified DefaultCounter: {y.DefaultCounter}"); // Should be 20
     }
 }
+

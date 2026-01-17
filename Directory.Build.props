@@ -1,5 +1,8 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(OPENCODE)' == '1' AND '$(DOTNET_CLI_TELEMETRY_SESSIONID)' == ''">
+    <BaseOutputPath>bin\opencode\</BaseOutputPath>
   </PropertyGroup>
 </Project>

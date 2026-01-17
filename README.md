@@ -1,6 +1,6 @@
 # OmniNet.SourceGenerators.Core
 
-A core library providing helpers and builders for creating C# source generators with ease.
+A core library providing fluent builders and helpers for creating C# source generators with ease. Write source generators with minimal boilerplate using a type-safe, performant API designed for zero-allocation builder patterns.
 
 ## Installation
 
@@ -8,17 +8,34 @@ A core library providing helpers and builders for creating C# source generators 
 dotnet add package OmniNet.SourceGenerators.Core
 ```
 
+[![NuGet](https://img.shields.io/nuget/v/OmniNet.SourceGenerators.Core.svg)](https://www.nuget.org/packages/OmniNet.SourceGenerators.Core)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/lordfanger/OmniNet.SourceGenerators)
+
 ## Features
 
-- **SourceBuilder** - Fluent API for generating C# source code files
-- **TypeBuilder** - Builder for generating type members (properties, methods, etc.)
-- **PropertyBuilder** - Builder for generating properties with modifiers, accessors, and attributes
-- **MethodBuilder** - Builder for generating methods with modifiers, parameters, and bodies
-- **MethodParametersBuilder** - Builder for method parameters (including ref/out/in/params/defaults)
-- **MethodBodyBuilder** - Builder for method bodies (statements, return, throw, etc.)
-- **OpeningTypeBuilder** - Builder for generating type declarations with modifiers
+- **Zero-allocation builders** - Uses `readonly ref struct` for stack allocation and maximum performance
+- **Fluent API** - Chainable methods for intuitive, readable code generation
+- **Type-safe** - Leverage C#'s type system to catch errors at compile time
+- **Comprehensive** - Generate classes, interfaces, structs, records, properties, methods, and more
+- **Incremental generator support** - Built for modern incremental source generators
+- **Fully tested** - 50+ unit tests ensuring reliability and correctness
+
+### Core Builders
+
+- **SourceBuilder** - Entry point for generating C# source code files
+- **OpeningTypeBuilder** - Configure type declarations (class, interface, struct, record) with modifiers
+- **TypeBuilder** - Build type members (properties, methods, etc.) within a type
+- **PropertyBuilder** - Generate properties with modifiers, accessors, initializers, and attributes
+- **MethodBuilder** - Generate methods with modifiers, parameters, and bodies
+- **MethodParametersBuilder** - Define method parameters (including ref/out/in/params/defaults)
+- **MethodBodyBuilder** - Write method bodies (statements, return, throw, etc.)
+- **TypeInheritanceBuilder** - Specify base classes and interfaces
+
+### Utilities
+
+- **TypeReference** - Flexible type specification (from ITypeSymbol, string, or namespace+name)
 - **IncrementalSymbolValuesProvider** - Helper for creating incremental source generators
-- **SourceGeneratorProvider** - Provider for accessing generated attributes stored as assembly resources
+- **SourceGeneratorProvider** - Access generated attributes stored as assembly resources
 
 ## Quick Start
 
@@ -159,40 +176,67 @@ sb.BuildClass("MyClass")
 
 ### TypeBuilder
 
-Generates type members. All builder methods accept `TypeReference` for specifying types.
+Generates type members within a type declaration. All builder methods accept `TypeReference` for specifying types.
 
 ```csharp
 using var type = /* ... */.AppendOpenType();
 
-// Using string type (implicit conversion)
+// Build properties using string type (implicit conversion - simplest)
 type.BuildProperty("string", "PropertyName")
     .WithAccessibility(Accessibility.Public)
     .WithImplicitGetter()
     .WithImplicitSetter()
     .Append();
 
-// Using ITypeSymbol
+// Build properties using ITypeSymbol (when working with Roslyn symbols)
 var stringType = compilation.GetSpecialType(SpecialType.System_String);
-type.BuildProperty(TypeReference.FromSymbol(stringType), "PropertyName")
+type.BuildProperty(stringType, "PropertyName")  // Overload accepts ITypeSymbol directly
     .WithAccessibility(Accessibility.Public)
     .WithImplicitGetter()
     .WithImplicitSetter()
     .Append();
 
-type.BuildMethod("MethodName") // void method
+// Build void method
+type.BuildMethod("MethodName")
     .WithAccessibility(Accessibility.Public)
     .OpenParameters()
     .OpenBody()
         .AppendLine("// method body")
     .Dispose();
 
-type.BuildMethod("MethodName", "int") // method with return type
+// Build method with return type (string)
+type.BuildMethod("MethodName", "int")
     .WithAccessibility(Accessibility.Public)
     .OpenParameters()
     .OpenBody()
         .AppendReturn("42")
     .Dispose();
+
+// Build method with ITypeSymbol return type
+type.BuildMethod("GetValue", intSymbol)  // Overload accepts ITypeSymbol directly
+    .WithAccessibility(Accessibility.Public)
+    .OpenParameters()
+    .AppendExpression("42");
+
+// Multiple members are automatically separated by blank lines
+type.BuildProperty("int", "Age")
+    .WithAccessibility(Accessibility.Public)
+    .WithImplicitGetter()
+    .WithImplicitSetter()
+    .Append();
+
+type.BuildProperty("string", "Name")
+    .WithAccessibility(Accessibility.Public)
+    .WithImplicitGetter()
+    .WithImplicitSetter()
+    .Append();
+// Generates:
+// public int Age { get; set; }
+//
+// public string Name { get; set; }
 ```
+
+**Note:** TypeBuilder implements `IDisposable` to close the type braces. Always use `using var type = ...` or manually call `type.Dispose()` when done.
 
 ### MethodBuilder
 
@@ -332,10 +376,44 @@ namespaceSymbol.IsGlobal();
 namespaceSymbol.IsNotGlobal();
 ```
 
+## Testing
+
+This library includes comprehensive unit tests covering all major functionality:
+
+- **PropertyBuilderTests** - 17 tests covering property generation scenarios
+- **MethodBuilderTests** - 21 tests covering method generation scenarios  
+- **TypeBuilderTests** - 21 tests covering type creation and member building
+
+Run tests with:
+```shell
+dotnet test
+```
+
+All tests verify generated syntax is correct and follows C# conventions.
+
+## Performance
+
+This library is designed with performance in mind:
+
+- **Zero-allocation builders** - All builders use `readonly ref struct` to avoid heap allocations
+- **No LINQ in hot paths** - Direct iteration for maximum performance
+- **StringBuilder reuse** - Efficient string building with minimal allocations
+- **Span<T> usage** - Uses modern C# features for zero-copy operations where applicable
+
+## Examples
+
+See the `test/OmniNet.SourceGenerators.Core.Tests.Generator` project for a complete working example of a source generator using this library.
+
 ## Requirements
 
-- .NET Standard 2.0 compatible
-- Microsoft.CodeAnalysis.CSharp
+- .NET Standard 2.0 (main library)
+- .NET 10.0 (test projects)
+- Microsoft.CodeAnalysis.CSharp 4.0.1+
+
+## Repository
+
+- **GitHub**: https://github.com/lordfanger/OmniNet.SourceGenerators
+- **NuGet**: https://www.nuget.org/packages/OmniNet.SourceGenerators.Core
 
 ## License
 

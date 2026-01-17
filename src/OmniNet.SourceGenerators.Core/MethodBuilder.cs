@@ -284,6 +284,14 @@ public ref partial struct MethodBuilder
                 _sbWrapper.Append("partial ");
             }
         }
+        else
+        {
+            // Explicit interface can have static modifier
+            if (_isStatic)
+            {
+                _sbWrapper.Append("static ");
+            }
+        }
 
         if (_isAsync)
         {

@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
@@ -91,6 +91,16 @@ file readonly struct InnerGenerator
             var voidType = compilation.GetSpecialType(SpecialType.System_Void);
 
             var sb = new SourceBuilder();
+            
+            // Check if the class implements IMyInterface or IMyGenericInterface
+            var myInterface = compilation.GetTypeByMetadataName($"{testItem.ContainingNamespace}.IMyInterface");
+            var genericInterface = compilation.GetTypeByMetadataName($"{testItem.ContainingNamespace}.IMyGenericInterface`1");
+            
+            var implementsMyInterface = myInterface != null && testItem.AllInterfaces.Any(i => SymbolEqualityComparer.Default.Equals(i, myInterface));
+            var implementsGenericInterface = genericInterface != null && testItem.AllInterfaces.Any(i => 
+                i.IsGenericType && SymbolEqualityComparer.Default.Equals(i.OriginalDefinition, genericInterface));
+            
+            // Generate the main test class
             {
                 using var type = sb.AppendFileNamespace(testItem.ContainingNamespace)
                     .BuildClass(testItem.Name)
@@ -98,21 +108,6 @@ file readonly struct InnerGenerator
                     .WithPartial()
                     .Append()
                     .AppendOpenType();
-
-                // Add interface to implement explicitly
-                var valueProviderInterface = compilation.GetTypeByMetadataName("System.IFormattable");
-                if (valueProviderInterface != null)
-                {
-                    // Add explicit interface implementation method
-                    type.BuildMethod("ToString", stringType)
-                        .WithExplicitInterfaceImplementation(valueProviderInterface)
-                        .OpenParameters()
-                            .AddParameter(stringType, "format", "null")
-                            .AddParameter(compilation.GetTypeByMetadataName("System.IFormatProvider")!, "formatProvider", "null")
-                        .OpenBody()
-                            .AppendReturn("Id")
-                        .Dispose();
-                }
 
                 type.BuildProperty(stringType, "Id")
                     .WithAccessibility(Accessibility.Public)
@@ -194,13 +189,149 @@ file readonly struct InnerGenerator
                     .OpenBody()
                         .AppendReturn("x + y")
                     .Dispose();
+
+                // If the class implements IMyInterface, generate the interface members
+                if (implementsMyInterface && myInterface != null)
+                {
+                    // Implement IMyInterface.Name property
+                    type.BuildProperty(stringType, "Name")
+                        .WithAccessibility(Accessibility.Public)
+                        .WithImplicitGetter()
+                        .WithImplicitSetter()
+                        .Append();
+
+                    // Implement IMyInterface.GetValue() method
+                    type.BuildMethod("GetValue", intType)
+                        .WithAccessibility(Accessibility.Public)
+                        .OpenParameters()
+                        .OpenBody()
+                            .AppendReturn("42")
+                        .Dispose();
+                }
+
+                // If the class implements IMyGenericInterface<T>, generate the static interface members
+                if (implementsGenericInterface)
+                {
+                    // Implement static abstract property
+                    type.BuildProperty(stringType, "StaticProperty")
+                        .WithAccessibility(Accessibility.Public)
+                        .WithStatic()
+                        .WithExplicitGetterExpression("\"StaticValue\"")
+                        .Append();
+
+                    // Implement static abstract method
+                    type.BuildMethod("Create", testItem)
+                        .WithAccessibility(Accessibility.Public)
+                        .WithStatic()
+                        .OpenParameters()
+                        .OpenBody()
+                            .AppendReturn($"new {testItem.Name} {{ Id = \"created\" }}")
+                        .Dispose();
+                }
             }
+
+            // Generate a separate class to test explicit interface implementation
+            GenerateExplicitInterfaceTestClass(context, testItem, compilation, stringType, intType);
 
             sb.AddToContext(context, testItem);
         }
     }
 
     private static bool IsClassAttribute(SyntaxNode node, CancellationToken token) => node is ClassDeclarationSyntax;
+
+    private static void GenerateExplicitInterfaceTestClass(SourceProductionContext context, ITypeSymbol testItem, Compilation compilation, ITypeSymbol stringType, ITypeSymbol intType)
+    {
+        // Test 1: Regular explicit interface implementation with IMyInterface
+        var myInterface = compilation.GetTypeByMetadataName($"{testItem.ContainingNamespace}.IMyInterface");
+        if (myInterface != null)
+        {
+            var sb1 = new SourceBuilder();
+            {
+                using var type = sb1.AppendFileNamespace(testItem.ContainingNamespace)
+                    .BuildClass($"{testItem.Name}WithExplicitInterface")
+                    .WithAccessibility(Accessibility.Public)
+                    .WithPartial()
+                    .Append()
+                    .AppendInheritance(myInterface)
+                    .AppendOpenType();
+
+                // Regular public property
+                type.BuildProperty(stringType, "PublicName")
+                    .WithAccessibility(Accessibility.Public)
+                    .WithImplicitGetter()
+                    .WithImplicitSetter()
+                    .WithInitializer("\"Public\"")
+                    .Append();
+
+                // Explicit interface implementation property
+                type.BuildProperty(stringType, "Name")
+                    .WithExplicitInterfaceImplementation(myInterface)
+                    .WithImplicitGetter()
+                    .WithImplicitSetter()
+                    .Append();
+
+                // Explicit interface implementation method
+                type.BuildMethod("GetValue", intType)
+                    .WithExplicitInterfaceImplementation(myInterface)
+                    .OpenParameters()
+                    .OpenBody()
+                        .AppendReturn("42")
+                    .Dispose();
+            }
+
+            sb1.AddToContext(context, testItem, "WithExplicitInterface");
+        }
+
+        // Test 2: Generic interface with static members
+        var genericInterface = compilation.GetTypeByMetadataName($"{testItem.ContainingNamespace}.IMyGenericInterface`1");
+        if (genericInterface != null)
+        {
+            var sb2 = new SourceBuilder();
+            {
+                var className = $"{testItem.Name}WithStaticInterface";
+                
+                // Create TypeReference for the class we're generating
+                TypeReference classTypeRef = className;
+                
+                // Create TypeReference for the constructed generic interface using string
+                TypeReference constructedInterfaceRef = $"IMyGenericInterface<{className}>";
+                
+                using var type = sb2.AppendFileNamespace(testItem.ContainingNamespace)
+                    .BuildClass(className)
+                    .WithAccessibility(Accessibility.Public)
+                    .WithPartial()
+                    .Append()
+                    .AppendInheritance(testItem.ContainingNamespace, $"IMyGenericInterface<{className}>")
+                    .AppendOpenType();
+
+                // Regular public property
+                type.BuildProperty(stringType, "InstanceValue")
+                    .WithAccessibility(Accessibility.Public)
+                    .WithImplicitGetter()
+                    .WithImplicitSetter()
+                    .WithInitializer("\"Instance\"")
+                    .Append();
+
+                // Explicit static interface property implementation
+                type.BuildProperty(stringType, "StaticProperty")
+                    .WithExplicitInterfaceImplementation(constructedInterfaceRef)
+                    .WithStatic()
+                    .WithExplicitGetterExpression("\"StaticValue\"")
+                    .Append();
+
+                // Explicit static interface method implementation
+                type.BuildMethod("Create", classTypeRef)
+                    .WithExplicitInterfaceImplementation(constructedInterfaceRef)
+                    .WithStatic()
+                    .OpenParameters()
+                    .OpenBody()
+                        .AppendReturn($"new {className}()")
+                    .Dispose();
+            }
+
+            sb2.AddToContext(context, testItem, "WithStaticInterface");
+        }
+    }
 
     private record struct TestItemData(SemanticModel ContextSemanticModel, ITypeSymbol Class);
 }

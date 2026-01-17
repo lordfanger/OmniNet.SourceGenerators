@@ -6,6 +6,7 @@
   <Folder Name="/Tests/">
     <Project Path="test/OmniNet.SourceGenerators.Core.Tests.App/OmniNet.SourceGenerators.Core.Tests.App.csproj" />
     <Project Path="test/OmniNet.SourceGenerators.Core.Tests.Generator/OmniNet.SourceGenerators.Core.Tests.Generator.csproj" />
+    <Project Path="test/OmniNet.SourceGenerators.Core.Tests/OmniNet.SourceGenerators.Core.Tests.csproj" />
   </Folder>
   <Project Path="src/OmniNet.SourceGenerators.Core/OmniNet.SourceGenerators.Core.csproj" Id="042a0812-bc1d-1f41-f3dc-43eef2e0ec7f" />
 </Solution>

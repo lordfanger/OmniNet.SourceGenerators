@@ -19,6 +19,8 @@
         <PackageProjectUrl>https://github.com/lordfanger/OmniNet.SourceGenerators</PackageProjectUrl>
         <PackageIconUrl>icon.png</PackageIconUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
+        <!-- Exclude ModuleInitializerAttribute to avoid conflicts with .NET 5+ -->
+        <PolySharpExcludeGeneratedTypes>System.Runtime.CompilerServices.ModuleInitializerAttribute</PolySharpExcludeGeneratedTypes>
     </PropertyGroup>
 
     <ItemGroup>

@@ -1,4 +1,4 @@
-﻿namespace OmniNet.SourceGenerators.Core;
+namespace OmniNet.SourceGenerators.Core;
 
 /// <summary>
 /// Builder to generate single generated file.
@@ -7,6 +7,11 @@ public readonly ref struct SourceBuilder
 {
     // TODO use shared pool
     private readonly StringBuilderWrapper _sbWrapper;
+
+    /// <summary>
+    /// Gets the generated source code content (for testing purposes).
+    /// </summary>
+    internal string GetOutputForTesting() => _sbWrapper.ToString();
 
     /// <summary>
     /// Builder to generate single generated file.

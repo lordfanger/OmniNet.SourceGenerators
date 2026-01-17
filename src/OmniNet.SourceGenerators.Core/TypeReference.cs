@@ -23,7 +23,7 @@ public readonly struct TypeReference
         _typeSymbol = null;
         _rawString = rawString;
         _namespaceAndTypeName = null;
-        _isInitialized = false;
+        _isInitialized = true;
     }
 
     private TypeReference((INamespaceSymbol? Namespace, string TypeName) namespaceAndTypeName)

@@ -17,6 +17,7 @@ public ref partial struct PropertyBuilder
     private string? _explicitGetterExpression;
     private string? _initializer;
     private VirtualModifier _virtualModifier = VirtualModifier.None;
+    private TypeReference? _explicitInterfaceImplementation;
     private readonly StringBuilderWrapper _sbWrapper;
     private readonly TypeReference _propertyType;
     private readonly string _name;
@@ -168,6 +169,33 @@ public ref partial struct PropertyBuilder
     public PropertyBuilder WithOverride(bool value = true) => WithVirtualModifier(VirtualModifier.Override, value);
 
     /// <summary>
+    /// Sets the property as an explicit interface implementation.
+    /// </summary>
+    /// <param name="interfaceType">Type reference of the interface being explicitly implemented.</param>
+    /// <returns>Self builder.</returns>
+    /// <remarks>
+    /// When using explicit interface implementation, the property cannot have accessibility modifiers,
+    /// static, virtual, abstract, or override modifiers. The signature is: InterfaceName.PropertyName.
+    /// </remarks>
+    public PropertyBuilder WithExplicitInterfaceImplementation(TypeReference interfaceType)
+    {
+        _explicitInterfaceImplementation = interfaceType;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the property as an explicit interface implementation.
+    /// </summary>
+    /// <param name="interfaceSymbol">Type symbol of the interface being explicitly implemented.</param>
+    /// <returns>Self builder.</returns>
+    /// <remarks>
+    /// When using explicit interface implementation, the property cannot have accessibility modifiers,
+    /// static, virtual, abstract, or override modifiers. The signature is: InterfaceName.PropertyName.
+    /// </remarks>
+    public PropertyBuilder WithExplicitInterfaceImplementation(ITypeSymbol interfaceSymbol)
+        => WithExplicitInterfaceImplementation(TypeReference.FromSymbol(interfaceSymbol));
+
+    /// <summary>
     /// Sets the property initializer expression.
     /// </summary>
     /// <param name="expression">The initialization expression (e.g., "10", "\"default\"", "new List&lt;int&gt;()").</param>
@@ -255,28 +283,62 @@ public ref partial struct PropertyBuilder
         }
 
         // Modifiers.
-        if (_accessibility != Accessibility.NotApplicable)
+        // Note: Explicit interface implementation cannot have accessibility or most modifiers
+        // TODO: emit error (diagnostics) if they are set alongside explicit interface implementation
+        if (_explicitInterfaceImplementation is null)
         {
-            _sbWrapper.Append(SyntaxFacts.GetText(_accessibility)).Append(' ');
-        }
+            if (_accessibility != Accessibility.NotApplicable)
+            {
+                _sbWrapper.Append(SyntaxFacts.GetText(_accessibility)).Append(' ');
+            }
 
-        if (_isStatic)
-        {
-            _sbWrapper.Append("static ");
-        }
+            if (_isStatic)
+            {
+                _sbWrapper.Append("static ");
+            }
 
-        if (_isRequired)
-        {
-            _sbWrapper.Append("required ");
-        }
+            if (_isRequired)
+            {
+                _sbWrapper.Append("required ");
+            }
 
-        if (_newModifier)
+            if (_newModifier)
+            {
+                _sbWrapper.Append("new ");
+            }
+
+            switch (_virtualModifier)
+            {
+                case VirtualModifier.Virtual:
+                    _sbWrapper.Append("virtual ");
+                    break;
+                case VirtualModifier.Abstract:
+                    _sbWrapper.Append("abstract ");
+                    break;
+                case VirtualModifier.Override:
+                    _sbWrapper.Append("override ");
+                    break;
+            }
+        }
+        else
         {
-            _sbWrapper.Append("new ");
+            // Explicit interface can have static modifier
+            if (_isStatic)
+            {
+                _sbWrapper.Append("static ");
+            }
         }
 
         // Property type and name.
-        _sbWrapper.AppendTypeReference(_propertyType).Append(' ').Append(_name);
+        _sbWrapper.AppendTypeReference(_propertyType).Append(' ');
+
+        // Explicit interface implementation prefix
+        if (_explicitInterfaceImplementation is { } explicitInterface)
+        {
+            _sbWrapper.AppendTypeReference(explicitInterface).Append('.');
+        }
+
+        _sbWrapper.Append(_name);
 
         var setterAccessor = _initOnly ? "init" : "set";
 
