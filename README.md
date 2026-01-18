@@ -16,9 +16,9 @@ dotnet add package OmniNet.SourceGenerators.Core
 - **Zero-allocation builders** - Uses `readonly ref struct` for stack allocation and maximum performance
 - **Fluent API** - Chainable methods for intuitive, readable code generation
 - **Type-safe** - Leverage C#'s type system to catch errors at compile time
-- **Comprehensive** - Generate classes, interfaces, structs, records, properties, methods, and more
+- **Comprehensive** - Generate classes, interfaces, structs, records, properties, methods, nested types, and more
 - **Incremental generator support** - Built for modern incremental source generators
-- **Fully tested** - 50+ unit tests ensuring reliability and correctness
+- **Fully tested** - 65+ unit tests ensuring reliability and correctness
 
 ### Core Builders
 
@@ -218,6 +218,30 @@ type.BuildMethod("GetValue", intSymbol)  // Overload accepts ITypeSymbol directl
     .OpenParameters()
     .AppendExpression("42");
 
+// Build nested types
+using var nestedType = type.BuildNestedClass("NestedClass")
+    .WithAccessibility(Accessibility.Public)
+    .Append()
+    .AppendOpenType();
+
+nestedType.BuildProperty("string", "NestedProperty")
+    .WithAccessibility(Accessibility.Public)
+    .WithImplicitGetter()
+    .Append();
+
+// Nested types can be nested further
+using var deeplyNested = nestedType.BuildNestedClass("DeeplyNestedClass")
+    .WithAccessibility(Accessibility.Private)
+    .Append()
+    .AppendOpenType();
+
+// All nested type methods available:
+// - BuildNestedClass(name)
+// - BuildNestedInterface(name)
+// - BuildNestedStruct(name)
+// - BuildNestedRecord(name)
+// - BuildNestedRecordStruct(name)
+
 // Multiple members are automatically separated by blank lines
 type.BuildProperty("int", "Age")
     .WithAccessibility(Accessibility.Public)
@@ -236,7 +260,7 @@ type.BuildProperty("string", "Name")
 // public string Name { get; set; }
 ```
 
-**Note:** TypeBuilder implements `IDisposable` to close the type braces. Always use `using var type = ...` or manually call `type.Dispose()` when done.
+**Note:** TypeBuilder implements `IDisposable` to close the type braces. Always use `using var type = ...` or manually call `type.Dispose()` when done. This applies to both top-level and nested types.
 
 ### MethodBuilder
 
@@ -383,6 +407,7 @@ This library includes comprehensive unit tests covering all major functionality:
 - **PropertyBuilderTests** - 17 tests covering property generation scenarios
 - **MethodBuilderTests** - 21 tests covering method generation scenarios  
 - **TypeBuilderTests** - 21 tests covering type creation and member building
+- **NestedTypeBuilderTests** - 15 tests covering nested type generation scenarios
 
 Run tests with:
 ```shell
@@ -401,6 +426,78 @@ This library is designed with performance in mind:
 - **Span<T> usage** - Uses modern C# features for zero-copy operations where applicable
 
 ## Examples
+
+### Nested Types
+
+Generate nested types with full support for all type kinds and access modifiers:
+
+```csharp
+var sb = new SourceBuilder();
+
+using var outerClass = sb.BuildClass("Container")
+    .WithAccessibility(Accessibility.Public)
+    .WithPartial()
+    .Append()
+    .AppendOpenType();
+
+// Add property to outer class
+outerClass.BuildProperty("string", "Name")
+    .WithAccessibility(Accessibility.Public)
+    .WithImplicitGetter()
+    .WithImplicitSetter()
+    .Append();
+
+// Create nested class with private accessibility
+using var nestedClass = outerClass.BuildNestedClass("Data")
+    .WithAccessibility(Accessibility.Private)
+    .Append()
+    .AppendOpenType();
+
+nestedClass.BuildProperty("int", "Value")
+    .WithAccessibility(Accessibility.Public)
+    .WithImplicitGetter()
+    .Append();
+
+// Create nested struct
+using var nestedStruct = outerClass.BuildNestedStruct("Settings")
+    .WithAccessibility(Accessibility.Public)
+    .Append()
+    .AppendOpenType();
+
+nestedStruct.BuildProperty("bool", "IsEnabled")
+    .WithAccessibility(Accessibility.Public)
+    .WithImplicitGetter()
+    .WithImplicitSetter()
+    .Append();
+
+// Generates:
+// public partial class Container
+// {
+//     public string Name { get; set; }
+//
+//     private class Data
+//     {
+//         public int Value { get; }
+//     }
+//
+//     public struct Settings
+//     {
+//         public bool IsEnabled { get; set; }
+//     }
+// }
+```
+
+**Nested Type Methods:**
+- `BuildNestedClass(string name)` - Create nested class
+- `BuildNestedInterface(string name)` - Create nested interface
+- `BuildNestedStruct(string name)` - Create nested struct
+- `BuildNestedRecord(string name)` - Create nested record
+- `BuildNestedRecordStruct(string name)` - Create nested record struct
+
+**Access Modifiers:**
+- **Nested types in classes** support all modifiers: `public`, `private`, `protected`, `internal`, `protected internal`, `private protected`
+- **Nested types in structs** support: `public`, `private`, `internal` (protected modifiers not allowed)
+- **Default accessibility** for nested types is `private` (unlike top-level types which default to `internal`)
 
 See the `test/OmniNet.SourceGenerators.Core.Tests.Generator` project for a complete working example of a source generator using this library.
 

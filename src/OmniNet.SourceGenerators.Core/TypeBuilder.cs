@@ -1,4 +1,4 @@
-﻿namespace OmniNet.SourceGenerators.Core;
+namespace OmniNet.SourceGenerators.Core;
 
 /// <summary>
 /// Builder to generate type's members.
@@ -67,6 +67,61 @@ public ref struct TypeBuilder
     /// <param name="returnType">Return type of method to generate.</param>
     /// <returns>Method builder to build new method.</returns>
     public MethodBuilder BuildMethod(string name, ITypeSymbol returnType) => BuildMethod(name, TypeReference.FromSymbol(returnType));
+
+    /// <summary>
+    /// Start building nested class.
+    /// </summary>
+    /// <param name="name">Class name.</param>
+    /// <returns>Builder to build nested class.</returns>
+    public OpeningTypeBuilder BuildNestedClass(string name)
+    {
+        SeparateMembers();
+        return new OpeningTypeBuilder(_sbWrapper, name, GeneratedTypeKind.Class, isNested: true);
+    }
+
+    /// <summary>
+    /// Start building nested interface.
+    /// </summary>
+    /// <param name="name">Interface name.</param>
+    /// <returns>Builder to build nested interface.</returns>
+    public OpeningTypeBuilder BuildNestedInterface(string name)
+    {
+        SeparateMembers();
+        return new OpeningTypeBuilder(_sbWrapper, name, GeneratedTypeKind.Interface, isNested: true);
+    }
+
+    /// <summary>
+    /// Start building nested struct.
+    /// </summary>
+    /// <param name="name">Struct name.</param>
+    /// <returns>Builder to build nested struct.</returns>
+    public OpeningTypeBuilder BuildNestedStruct(string name)
+    {
+        SeparateMembers();
+        return new OpeningTypeBuilder(_sbWrapper, name, GeneratedTypeKind.Struct, isNested: true);
+    }
+
+    /// <summary>
+    /// Start building nested record.
+    /// </summary>
+    /// <param name="name">Record name.</param>
+    /// <returns>Builder to build nested record.</returns>
+    public OpeningTypeBuilder BuildNestedRecord(string name)
+    {
+        SeparateMembers();
+        return new OpeningTypeBuilder(_sbWrapper, name, GeneratedTypeKind.Record, isNested: true);
+    }
+
+    /// <summary>
+    /// Start building nested record struct.
+    /// </summary>
+    /// <param name="name">Record struct name.</param>
+    /// <returns>Builder to build nested record struct.</returns>
+    public OpeningTypeBuilder BuildNestedRecordStruct(string name)
+    {
+        SeparateMembers();
+        return new OpeningTypeBuilder(_sbWrapper, name, GeneratedTypeKind.RecordStruct, isNested: true);
+    }
 
     /// <summary>
     /// Separate members with new line if any was written.

@@ -8,6 +8,8 @@ public ref struct OpeningTypeBuilder
     private readonly StringBuilderWrapper _sbWrapper;
     private readonly string _name;
     private readonly string _type;
+    private readonly GeneratedTypeKind _typeKind;
+    private readonly bool _isNested;
     private Accessibility _accessibility = Accessibility.NotApplicable;
     private bool _isPartial;
 
@@ -15,10 +17,13 @@ public ref struct OpeningTypeBuilder
     /// <param name="sbWrapper"><inheritdoc cref="StringBuilderWrapper" path="/summary"/></param>
     /// <param name="name">Type name.</param>
     /// <param name="typeKind">Kind of type.</param>
-    internal OpeningTypeBuilder(StringBuilderWrapper sbWrapper, string name, GeneratedTypeKind typeKind)
+    /// <param name="isNested">Whether the type is nested within another type.</param>
+    internal OpeningTypeBuilder(StringBuilderWrapper sbWrapper, string name, GeneratedTypeKind typeKind, bool isNested = false)
     {
         _sbWrapper = sbWrapper;
         _name = name;
+        _typeKind = typeKind;
+        _isNested = isNested;
         _type = typeKind switch
         {
             GeneratedTypeKind.Class => "class",
@@ -49,6 +54,9 @@ public ref struct OpeningTypeBuilder
     /// <returns>Self builder.</returns>
     public OpeningTypeBuilder WithAccessibility(Accessibility accessibility)
     {
+        // TODO emit error (diagnostics) for invalid accessibility modifiers:
+        // - Top-level types cannot be private, protected, protected internal, or private protected
+        // - Nested types in struct cannot be protected, protected internal, or private protected
         _accessibility = accessibility;
         return this;
     }
