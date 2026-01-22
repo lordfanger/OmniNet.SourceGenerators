@@ -12,6 +12,7 @@ public ref struct OpeningTypeBuilder
     private readonly bool _isNested;
     private Accessibility _accessibility = Accessibility.NotApplicable;
     private bool _isPartial;
+    private bool _isStatic;
 
     /// <summary><inheritdoc cref="OpeningTypeBuilder" path="/summary"/></summary>
     /// <param name="sbWrapper"><inheritdoc cref="StringBuilderWrapper" path="/summary"/></param>
@@ -48,6 +49,20 @@ public ref struct OpeningTypeBuilder
     }
 
     /// <summary>
+    /// Sets the <c>static</c> modifier for the type.
+    /// </summary>
+    /// <param name="value">Whether the <c>static</c> modifier will be set.</param>
+    /// <returns>Self builder.</returns>
+    /// <remarks>
+    /// The static modifier is only valid for classes. Using it with interfaces, structs, or records may produce invalid code.
+    /// </remarks>
+    public OpeningTypeBuilder WithStatic(bool value = true)
+    {
+        _isStatic = value;
+        return this;
+    }
+
+    /// <summary>
     /// Set's type's accessibility.
     /// </summary>
     /// <param name="accessibility">Desired type's accessibility.</param>
@@ -70,6 +85,11 @@ public ref struct OpeningTypeBuilder
         if (_accessibility != Accessibility.NotApplicable)
         {
             _sbWrapper.Append(SyntaxFacts.GetText(_accessibility)).Append(' ');
+        }
+
+        if (_isStatic)
+        {
+            _sbWrapper.Append("static ");
         }
 
         if (_isPartial)

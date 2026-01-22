@@ -205,6 +205,35 @@ public ref partial struct MethodBuilder
     }
 
     /// <summary>
+    /// Opens parameter builder for extension method with <c>this</c> modifier on the first parameter.
+    /// </summary>
+    /// <param name="type">Type of the first parameter.</param>
+    /// <param name="name">Name of the first parameter.</param>
+    /// <returns>Parameters builder for additional parameters.</returns>
+    /// <remarks>
+    /// Extension methods must be static and defined in a static class.
+    /// This method automatically adds the first parameter with the <c>this</c> modifier.
+    /// </remarks>
+    public MethodParametersBuilder OpenExtensionParameters(TypeReference type, string name)
+    {
+        AppendDocumentationAndSignature();
+        _sbWrapper.Append("this ").AppendTypeReference(type).Append(' ').Append(name);
+        return new MethodParametersBuilder(_sbWrapper, this, anyParameterWritten: true);
+    }
+
+    /// <summary>
+    /// Opens parameter builder for extension method with <c>this</c> modifier on the first parameter.
+    /// </summary>
+    /// <param name="type">Type of the first parameter.</param>
+    /// <param name="name">Name of the first parameter.</param>
+    /// <returns>Parameters builder for additional parameters.</returns>
+    /// <remarks>
+    /// Extension methods must be static and defined in a static class.
+    /// This method automatically adds the first parameter with the <c>this</c> modifier.
+    /// </remarks>
+    public MethodParametersBuilder OpenExtensionParameters(ITypeSymbol type, string name) => OpenExtensionParameters(TypeReference.FromSymbol(type), name);
+
+    /// <summary>
     /// Appends documentation and method signature (modifiers, return type, name).
     /// </summary>
     private void AppendDocumentationAndSignature()

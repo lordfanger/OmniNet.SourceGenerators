@@ -1,4 +1,4 @@
-namespace OmniNet.SourceGenerators.Core;
+﻿namespace OmniNet.SourceGenerators.Core;
 
 /// <summary>
 /// Provides incremental symbol values based on the specified syntax nodes and symbols marked by source generated attribute.

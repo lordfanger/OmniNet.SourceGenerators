@@ -1,4 +1,4 @@
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 
 namespace OmniNet.SourceGenerators.Core.Tests;
 
@@ -484,6 +484,64 @@ public class TypeBuilderTests
             	public int Age { get; set; }
             
             	public bool IsAdult() => Age >= 18;
+            }
+            """.UnifyCodeLineEndings());
+    }
+
+    [Test]
+    public async Task StaticClass_GeneratesCorrectSyntax()
+    {
+        var code = GetGeneratedCode(sb =>
+        {
+            using var type = sb.BuildClass("StaticHelper")
+                .WithAccessibility(Accessibility.Public)
+                .WithStatic()
+                .Append()
+                .AppendOpenType();
+        });
+
+        await Assert.That(code).IsEqualTo("""
+            public static class StaticHelper
+            {
+            }
+            """.UnifyCodeLineEndings());
+    }
+
+    [Test]
+    public async Task StaticPartialClass_GeneratesCorrectSyntax()
+    {
+        var code = GetGeneratedCode(sb =>
+        {
+            using var type = sb.BuildClass("StaticHelper")
+                .WithAccessibility(Accessibility.Public)
+                .WithStatic()
+                .WithPartial()
+                .Append()
+                .AppendOpenType();
+        });
+
+        await Assert.That(code).IsEqualTo("""
+            public static partial class StaticHelper
+            {
+            }
+            """.UnifyCodeLineEndings());
+    }
+
+    [Test]
+    public async Task InternalStaticClass_GeneratesCorrectSyntax()
+    {
+        var code = GetGeneratedCode(sb =>
+        {
+            using var type = sb.BuildClass("InternalStaticHelper")
+                .WithAccessibility(Accessibility.Internal)
+                .WithStatic()
+                .Append()
+                .AppendOpenType();
+        });
+
+        await Assert.That(code).IsEqualTo("""
+            internal static class InternalStaticHelper
+            {
             }
             """.UnifyCodeLineEndings());
     }

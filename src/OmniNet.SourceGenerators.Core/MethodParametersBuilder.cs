@@ -14,10 +14,12 @@ public ref struct MethodParametersBuilder
     /// </summary>
     /// <param name="sbWrapper">Wrapped string builder used as store.</param>
     /// <param name="parent">Parent method builder.</param>
-    internal MethodParametersBuilder(StringBuilderWrapper sbWrapper, MethodBuilder parent)
+    /// <param name="anyParameterWritten">Whether any parameter was already written (for chaining from extension parameters).</param>
+    internal MethodParametersBuilder(StringBuilderWrapper sbWrapper, MethodBuilder parent, bool anyParameterWritten = false)
     {
         _sbWrapper = sbWrapper;
         _parent = parent;
+        _anyParameterWritten = anyParameterWritten;
     }
 
     /// <summary>

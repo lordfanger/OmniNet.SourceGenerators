@@ -1,4 +1,4 @@
-// Global using directives
+﻿// Global using directives
 
 global using System.Collections.Immutable;
 global using System.Text;

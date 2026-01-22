@@ -432,4 +432,77 @@ public class MethodBuilderTests
             	static TestClass IFactory.Create() => new TestClass();
             """.UnifyCodeLineEndings());
     }
+
+    [Test]
+    public async Task ExtensionMethodWithSingleParameter_GeneratesCorrectSyntax()
+    {
+        var code = GetGeneratedMethod(type =>
+        {
+            TypeReference stringType = "string";
+            TypeReference boolType = "bool";
+            type.BuildMethod("IsNullOrEmpty", boolType)
+                .WithAccessibility(Accessibility.Public)
+                .WithStatic()
+                .OpenExtensionParameters(stringType, "value")
+                .AppendExpression("string.IsNullOrEmpty(value)");
+        });
+
+        await Assert.That(code).IsEqualTo("""
+            	public static bool IsNullOrEmpty(this string value) => string.IsNullOrEmpty(value);
+            """.UnifyCodeLineEndings());
+    }
+
+    [Test]
+    public async Task ExtensionMethodWithMultipleParameters_GeneratesCorrectSyntax()
+    {
+        var code = GetGeneratedMethod(type =>
+        {
+            TypeReference stringType = "string";
+            TypeReference intType = "int";
+            type.BuildMethod("Repeat", stringType)
+                .WithAccessibility(Accessibility.Public)
+                .WithStatic()
+                .OpenExtensionParameters(stringType, "value")
+                .AddParameter(intType, "count")
+                .OpenBody()
+                .AppendLine("return string.Concat(Enumerable.Repeat(value, count));")
+                .Dispose();
+        });
+
+        await Assert.That(code).IsEqualTo("""
+            	public static string Repeat(this string value, int count)
+            	{
+            		return string.Concat(Enumerable.Repeat(value, count));
+            	}
+            """.UnifyCodeLineEndings());
+    }
+
+    [Test]
+    public async Task ExtensionMethodWithBody_GeneratesCorrectSyntax()
+    {
+        var code = GetGeneratedMethod(type =>
+        {
+            TypeReference stringType = "string";
+            type.BuildMethod("Reverse", stringType)
+                .WithAccessibility(Accessibility.Public)
+                .WithStatic()
+                .OpenExtensionParameters(stringType, "value")
+                .OpenBody()
+                .AppendLine("if (value == null) return null;")
+                .AppendLine("var charArray = value.ToCharArray();")
+                .AppendLine("Array.Reverse(charArray);")
+                .AppendLine("return new string(charArray);")
+                .Dispose();
+        });
+
+        await Assert.That(code).IsEqualTo("""
+            	public static string Reverse(this string value)
+            	{
+            		if (value == null) return null;
+            		var charArray = value.ToCharArray();
+            		Array.Reverse(charArray);
+            		return new string(charArray);
+            	}
+            """.UnifyCodeLineEndings());
+    }
 }
